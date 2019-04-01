@@ -1,0 +1,423 @@
+CS 61A          Solutions to sample midterm 1 #1
+
+1.  What will Scheme print?
+
+> (every - (keep number? '(the 1 after 909)))
+(-1 -909)
+
+	The KEEP part of the expression has the value (1 909), selecting the
+	numbers from the given sentence.  (By the way, not everyone recognized
+	this as the name of a Beatles song, from the album _Let It Be_, the
+	last one they released, but the next-to-last one they recorded.)
+
+	(every - '(1 909)) computes (- 1) and (- 909), putting the results in
+	a sentence.  Some people thought this was an error because - requires
+	two arguments, but it doesn't.  With one argument it means negation,
+	rather than subtraction.  (Look it up in the Scheme reference manual
+	at the back of your course reader!)
+
+	A few people said -908, because they thought EVERY would call the
+	function once, giving both numbers as arguments.  That would be
+	(APPLY - '(1 909)), not EVERY.
+
+
+> ((lambda (a b) ((if (< b a) + *) b a)) 4 6)
+24
+
+	Substitute 4 for A and 6 for B in the body of the lambda:
+		((if (< 6 4) + *) 6 4)
+	(< 6 4) is false, so the IF expression returns the multiplication
+	procedure, which is the value of the expression *.  This procedure
+	is then called with 6 and 4 as its arguments.
+
+
+> (word (first '(cat)) (butlast 'dog))
+CATDO
+
+	The wrong answer we expected was CDO, but FIRST of a sentence is its
+	entire first word, even if there's only one word in it.  Another
+	fairly common wrong answer was ERROR, presumably from people who
+	rightly thought that WORD won't accept a sentence as argument, but who
+	didn't see that FIRST of a sentence is a word, which makes it an okay
+	argument to WORD.
+
+	A few people said CATOG because they didn't notice that it was
+	BUTLAST rather than BUTFIRST.  We didn't take off for this.
+
+> (cons (list 1 2) (cons 3 4))
+
+((1 2) 3 . 4)
+
+
+    ---------      ---------
+    |   |   |      |   |   |
+--->| | |  ------->| | | | |
+    | | |   |      | | | | |
+    --|------      --|---|--
+      |              |   |    
+      |              V   V
+      |
+      |              3   4
+      |
+      V
+    ---------      ---------
+    |   |   |      |   |  /|
+    | | |  ------->| | | / |
+    | | |   |      | | |/  |
+    --|------      --|------
+      |              |
+      V              V
+
+      1              2
+
+	There were two important points to this problem: knowing the
+	difference between CONS and LIST, and knowing how Scheme prints
+	improper lists.  (The two upper pairs in the diagram form the
+	spine of an improper list, which is a cdr-linked set of pairs in
+	which the cdr of the last pair isn't the empty list.)
+
+
+> (let ((p (list 4 5)))
+    (cons (cdr p) (cddr p)) )
+
+((5))
+
+        p is bound to (4 5)
+        (cdr p) evaluates to (5), and (cddr p) evaluates to ()
+        (cons '(5) '()) evaluates to ((5))
+
+Box and pointer diagram:
+    +---+---+
+--->| o | / |
+    +-+-+---+
+      |
+      v
+    +---+---+
+    | o | / |
+    +-+-+---+
+      |
+      v
+      5
+
+> (cadadr '((a (b) c) (d (e) f) (g (h) i)))
+(e)
+
+--->X/
+    |
+    V
+    e
+
+	We didn't take off for including other pairs from the large argument
+	in your picture, as long as there was a clear start arrow showing
+	where the return value starts.
+
+	The quickest way to solve this problem is to remember that CADR means
+	the second element, and to view CADADR as (CADR (CADR ...)) -- the
+	second element of the second element of the argument.  Alternatively,
+	we can spell it out step by step:
+
+        (cdr '((a (b) c) (d (e) f) (g (h) i)))  ==>  ((d (e) f) (g (h) i))
+        (car '((d (e) f) (g (h) i)))            ==>  (d (e) f)
+        (cdr '(d (e) f))                        ==>  ((e) f)
+        (car '((e) f))                          ==>  (e)
+
+	The crucial point is to see that it's CAR of CDR of CAR of CDR of the
+	list, which means the first step is CDR -- you have to work from
+	inside out, which in a case like this means from right to left.  If
+	you start by taking the CAR of the big list, you end up with the empty
+	list.
+
+
+
+Scoring: one point each.
+
+
+2.  Order of growth
+
+(define (foo n)
+  (if (< n 2)
+      1
+      (+ (baz (- n 1))
+	 (baz (- n 2)) )))
+
+(define (baz n)
+  (+ n (- n 1)))
+
+FOO is Theta(1).
+
+	Since FOO calls BAZ twice, we have to know the running time of BAZ
+	before we can figure out the running time of FOO.
+
+	BAZ does not contain any recursive calls, either to baz itself or to
+	foo.  Rather, it performs two fixed-time operations, an addition and a
+	subtraction, and so its running time is Theta(1).
+
+	Therefore, everything FOO does is fixed-time!  It calls <, +, -, and
+	BAZ, all of which are Theta(1).  And so FOO itself is also Theta(1).
+
+	The most frequent wrong answer was Theta(2^n).  People who thought
+	that put too much weight on the *form* of procedure FOO.  They saw two
+	procedure calls, and thought that the process was therefore comparable
+	to the Fibonacci computation or the Pascal's Triangle computation.
+	But in those cases, the two calls are *recursive* calls, not calls to
+	a fixed-time helper.
+
+(define (garply n)
+  (if (= n 0)
+      0
+      (+ (factorial n) (garply (- n 1))) ))
+
+(define (factorial n)
+  (if (= n 0)
+      1
+      (* n (factorial (- n 1))) ))
+
+GARPLY is Theta(n^2).
+
+	GARPLY calls itself recursively N times, so it's tempting to think
+	that it's Theta(n), the most common wrong answer.  But each of those N
+	invocations of GARPLY includes an invocation of FACTORIAL, which is
+	itself Theta(n).  So N calls to a Theta(N) procedure makes a total of
+	N*N fixed-time operations.
+
+Scoring: one point each.
+
+
+3.  Normal and applicative order.
+
+The expression (* (counter) (counter)) has the value 2 under both
+applicative and normal order.
+
+Under applicative order, all subexpressions are evaluated before * is called.
+There are two subexpressions of the form (counter), each of which is
+evaluated separately.  The first evaluation returns 1; the second returns 2.
+(It doesn't matter whether they are evaluated left to right or right to
+left, since 1 times 2 = 2 times 1.)
+
+Under normal order, you might think that things would get more complicated,
+but since * is a primitive (as the problem statement says), its arguments
+are evaluated before it is invoked even under normal order.  It's only
+arguments to user-defined procedures that are handled differently.
+
+But even if we did something like this:
+
+	(define (times a b)
+	  (* a b))
+
+	(times (counter) (counter))
+
+it wouldn't change the result.  Normal order *would* affect the call to
+TIMES, so that instead of substituting 1 and 2 for A and B, we'd
+substitute the expression (COUNTER) for both A and B in the body of
+TIMES.  The result of that substitution would be
+
+	(* (counter) (counter))
+
+which is the same thing we started with.
+
+The most common error was to say that the answer would be 1 under applicative
+order.  People who said that were confusing this problem with a different one,
+more like what I did in lecture:
+
+	(define (square x)
+	  (* x x))
+
+	(square (counter))
+
+For *that* problem, the answer would be 1 under applicative order and 2 under
+normal order.  But this is the opposite of the situation you were given.
+Normal order can turn one subexpression into multiple copies (which are then
+separately evaluated), but it can't turn two expressions, even if identical,
+into a single expression to be evaluated once.
+
+Interestingly, almost as many people said that the answer would be 1 under
+*normal* order.  My guess is that they were thinking of the square problem,
+but instead of actually working through that problem, they just remembered
+that normal order is the one that gives the weird answer.  :-)
+
+Scoring: 1 point, all or nothing.
+
+
+4.  Recursive or iterative process?
+
+(define (butfirst-n num stuff)
+  (if (= num 0)
+      stuff
+      (butfirst-n (- num 1) (bf stuff))))
+
+ITERATIVE PROCESS.  The recursive call is the last thing the procedure has
+to do.  (It's inside an IF, but it isn't evaluated until after IF has decided
+which branch to take.)
+
+
+(define (member? thing stuff)
+  (cond ((empty? stuff) #f)
+	((equal? thing (first stuff)) #t)
+	(else (member? thing (bf stuff)))))
+
+ITERATIVE PROCESS.  Again, the recursive call is the last thing the
+procedure has to do.
+
+
+(define (addup nums)
+  (if (empty? nums)
+      0
+      (+ (first nums)
+	 (addup (bf nums)))))
+
+RECURSIVE PROCESS.  The recursive call is the last *line* of the procedure
+definition, but it's inside a call to the + procedure, so the after the
+recursion finishes we still have to call +.
+
+Scoring: one point each.
+
+
+5.  Recursive procedures.
+
+This is the only one that I didn't expect to be immediately obvious
+to all of you.  There are lots of ways to do it.  Here is the one
+suggested by the hint:
+
+(define (syllables wd)
+  (define (chop wd)
+    (cond ((empty? wd) "")
+	  ((vowel? (first wd))
+	   (chop (bf wd)))
+	  (else wd)) )
+  (cond ((empty? wd) 0)
+	((vowel? (first wd)) (+ (syllables (chop wd)) 1))
+	(else (syllables (bf wd))) ))
+
+Another way is to count a vowel only if the next letter isn't one:
+
+(define (syllables wd)
+  (cond ((empty? wd) 0)
+	((vowel? (first wd))
+	 (cond ((empty? (bf wd)) 1)
+	       ((vowel? (first (bf wd))) (syllables (bf wd)))
+	       (else (+ (syllables (bf wd)) 1)) ))
+	(else (syllables (bf wd))) ))
+
+Yet another way is to use a state variable to remember whether
+or not the previous letter was a vowel:
+
+(define (syllables wd)
+  (define (s1 wd was-cons)
+    (cond ((empty? wd) 0)
+	  ((vowel? (first wd)) (+ was-cons (s1 (bf wd) 0)))
+	  (else (s1 (bf wd) 1)) ))
+  (s1 wd 1) )
+
+There were too many kinds of errors to list.  The trick here is
+that the program structure can't be exactly like the examples
+seen earlier, but you have to cope with that while not forgetting
+everything you know about functional programming.  For example,
+many people wanted to keep a count of the number of syllables so
+far in a state variable, so they said things like
+           (if (vowel? (first wd))
+	       (+ count 1)
+	       (... something else ...))
+as if + CHANGED THE VALUE of the variable count.  Thinking in BASIC!
+
+
+6.  Higher order procedures.
+
+(define (in-order? pred sent)
+  (cond ((empty? sent) #t)
+	((empty? (bf sent)) #t)
+	((pred (first sent) (first bf sent))
+	 (in-order? pred (bf sent)) )
+	(else #f) ))
+
+(define (order-checker pred)
+  (lambda (sent) (in-order? pred sent)) )
+
+One common error was to use (in-order? pred (bf (bf sent))) as the
+recursive step, on the theory that the first two elements have already
+been looked at.  The trouble is that you have to compare overlapping
+pairs of elements.  For example, (in-order? < '(2 8 5 9)) should be
+false, even though 2<8 and 5<9, because 8>5.
+
+Scoring: For part (a), three if it's right, two if it's correctly
+typed (that is, your procedure takes a two-argument predicate and
+a sentence as arguments, and returns true or false), one if it has
+some idea, zero if not.  For part (b), two if it's right, one if
+it's correctly typed (takes a predicate function of two arguments
+and returns a predicate function of one argument), zero if not.
+
+
+7.  Time ADT
+
+(define (time-print-form time)
+  (word (hour time) ': (two-digit (minute time)) (category time)))
+
+(define (two-digit num)
+  (if (< num 10)
+      (word 0 num)
+      num))
+
+
+(define (24-hour time)
+  (+ (* (hour time) 100)
+     (minute time)
+     (if (equal? (category time) 'pm) 1200 0)))
+
+
+(define (make-time hr min cat)
+  (+ (* hr 100)
+     min
+     (if (equal? cat 'pm) 1200 0)))
+
+(define (hour time)
+  (if (>= time 1200)
+      (- (div time 100) 12)
+      (div time 100)))
+
+(define (minute time)
+  (remainder time 100))
+
+(define (category time)
+  (if (>= time 1200) 'pm 'am))
+
+
+The most common serious errors were writing a non-function in part (a) and
+rewriting make-time with the wrong number of arguments in part (c).  These
+errors were the ones that gave rise to the most complaints about harsh
+grading, but I really think they're about crucial issues in the course.
+
+Part (a) says, "Write a FUNCTION time-print-form that takes a time as its
+argument and RETURNS a word of the form 3:07pm."  In week 7 of the course
+you should know what it means for a function to return a value!  Some people
+said they were confused by the fact that the word "print" is part of the
+function's name, but a "print form" is the form in which we want things to
+be printed; computing the print form of a time doesn't mean that we should
+actually print it!  Maybe the print form will be used as part of a larger
+sentence that we'll want to print later.
+
+Part (c) says, "Now we decide to change the *internal* representation of
+times to be a number in 24-hour form.  BUT WE WANT THE CONSTRUCTOR AND
+SELECTORS TO HAVE THE SAME INTERFACE SO THAT PROGRAMS USING THE ABSTRACT
+DATA TYPE DON'T HAVE TO CHANGE."  That means that the arguments to make-time
+must be the same things they were all along: an hour (in 12-hour time), a
+minute, and a category (am/pm).
+
+
+Many people returned 3:7pm instead of 3:07pm in part (a), because they
+thought that it would be sufficient to say something like
+        (time-print-form (make-time 3 07 'pm))
+The trouble is that Scheme interprets 07 as the number 7; Scheme doesn't
+remember exactly how you typed the number.  This was a minor error.
+
+Many people, in part (c), changed the internal representation to something
+other than a number, e.g., a list of two numbers.  I've spoken with four
+students who didn't understand why this was wrong, and I asked them to
+read the first sentence of part (c), and they said "... representation of
+times to be in 24-hour form."  And I said, "No, read it again."  On the
+third or fourth try they'd finally read the words "a number."  Sigh.
+
+Typical errors and scores:
+
+4  3:7pm
+3  changes internal form to (15 7) instead of 1507
+2  printing in (a) or wrong args in (c), as above
+1  glimmers of using the abstraction

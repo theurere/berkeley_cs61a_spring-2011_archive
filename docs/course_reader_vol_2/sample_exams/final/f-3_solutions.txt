@@ -1,0 +1,1125 @@
+CS 61A		Solutions to sample final exam #3
+
+1.  Domain and range
+
+The domain of a procedure is the TYPE of thing(s) it accepts as argument(s).
+The range is the TYPE of thing it returns.  So we wanted types as the answers
+to this question.  That's generally what you gave for the domain, but for the
+range, several people instead gave explanations of the purpose of the
+procedure, e.g., "Range: the children of the tree node."
+
+(a) CHILDREN
+
+CHILDREN takes one argument, a Tree (which is the same as a node).
+It returns a forest, which is a list of Trees.  So:
+
+	Domain: TREE or NODE
+	Range:  FOREST or LIST OF TREES or just LIST
+
+Most people got this one.
+
+(b) OWNER
+
+OWNER takes one argument, a THING object.  It returns the *name of* the
+person who owns the thing (not the person, not the name of the thing).
+A name is a word, not an object!  So:
+
+	Domain: OBJECT or THING OBJECT or THING INSTANCE
+	Range:  WORD
+
+We also accepted NAME for the range, although that isn't really a type.
+The most common wrong answer for the range was PERSON; that's a kind of
+object, not a word.  A fairly common wrong answer for the domain was CLASS;
+the procedure takes a particular thing as its argument, not the class of all
+things.  Another common wrong answer was PROCEDURE; it's true that we use
+procedures to represent objects, but not every procedure is an object, and
+not every procedure can be used as the argument to OWNER.
+
+(c) SET-CDR!
+
+SET-CDR! takes two arguments; the first must be a pair, and the second can be
+of any type.  Its return value is unspecified, since it is used for its effect
+rather than for its return value, so we accepted anything for the range in
+this part.
+
+	Domain: PAIR and ANYTHING (you had to say both).
+	Range:  UNSPECIFIED (but we accepted anything).
+
+We didn't accept LIST for the domain; there is no requirement that the first
+argument to SET-CDR! be a pair whose cdr is a list (which is what it means for
+a pair to be a list).  Also, the LIST domain would include the empty list,
+which can't be used as the first argument to SET-CDR!.
+
+Scoring: One point each, all or nothing.
+
+
+2.  Data abstraction
+
+The argument is a LIST of RATIONALs.  For the list itself, the appropriate
+selectors are CAR and CDR.  (Constructors for lists include CONS, LIST, and
+APPEND, but in this problem we are not constructing a list!)  For a rational
+number, the constructor is MAKE-RAT and the selectors are NUMER and DENOM.
+So the corrected version is
+
+(define (ratprod lst)
+  (define (helper lst n d)
+    (if (null? lst)
+	(MAKE-RAT n d)
+	(helper (CDR lst) (* n (NUMER (CAR lst)) (* d (DENOM (CAR lst)))))))
+  (helper lst 1 1))
+
+The call to CDR doesn't change because it is selecting part of a list, not
+part of a single rational number.  The calls to CAAR and CDAR do change,
+as shown above; they both select the first element of the list (CAR), and
+each then selects one piece of a rational number (NUMER or DENOM).
+
+Scoring: -1 point per error, either a required change not made or something
+changed that shouldn't have been.  But 0 points if no correct change was
+made at all (e.g., if the question was left blank).
+
+
+3.  Order of growth
+
+(a)
+
+(define (two-to-the n)
+  (if (zero? n)
+      1
+      (let ((prev (two-to-the (- n 1))))
+	(* prev 2) )))
+
+Each call to this procedure does three constant-time operations (ZERO?, -,
+and *) in addition to making one recursive call.  So there are N recursive
+calls, each of which takes constant time.  Therefore, this procedure takes
+time Theta(N).
+
+(b)
+
+(define (two-to-the n)
+  (if (zero? n)
+      1
+      (let ((prev (two-to-the (- n 1))))
+	(+ prev prev) )))
+
+The only difference here is (+ PREV PREV) instead of (* PREV 2).  This
+is still a single, constant-time arithmetic operation, although both operands
+are the variable PREV rather than including the explicit number 2.  But
+finding the value of a variable is also constant time, so this doesn't affect
+the program's running time, which is still Theta(N).
+
+(c)
+
+(define (two-to-the n)
+  (if (zero? n)
+      1
+      (+ (two-to-the (- n 1))
+	 (two-to-the (- n 1)) )))
+
+In this version, each call to TWO-TO-THE gives rise to *two* recursive
+calls.  So, for example, (two-to-the 5) calls (two-to-the 4) twice; each
+of those makes two calls, for a total of four calls of (two-to-the 3).
+Similarly, there are eight (two-to-the 2) calls and 16 of (two-to-the 1).
+Increasing N by 1 doubles the total number of recursive calls, so the
+running time for this procedure is exponential, Theta(2^N).
+
+The most common error was to think that the last version was Theta(N^2).
+
+Scoring: One point each.
+
+
+4.  Functions of functions.
+
+The point of this question is to illustrate some of the ways in which
+functions can be manipulated on their own, without explicit reference to
+the arguments of the functions.  You've seen COMPOSE before, in lecture;
+the other two tools given here are similar in spirit.
+
+One way to think about these questions would be to try writing the
+desired procedure without using COMPOSE, SPECIALIZE, or SWAP-ARGS, and
+then think about how you did it.
+
+[a] INITIALS
+
+(define (initials sent)
+  (every first sent))
+
+So INITIALS is a specialized version of EVERY, in which the first
+(procedure) argument is FIRST.  Thus we have the answer:
+
+(define initials (specialize every first))
+
+
+[b] POSITIVE?
+
+(define (positive num)
+  (> num 0))
+
+This is a specialization of >, in which the *second* argument is held
+constant (zero), not the first argument as in INITIALS.  So SPECIALIZE
+won't quite do the job by itself.  One solution would be to use <
+instead of >:
+
+(define (positive num)
+  (< 0 num))
+
+(define positive (specialize < 0))
+
+but that wasn't one of the choices.  Instead we use SWAP-ARGS to get
+the arguments in the right order:
+
+(define positive (specialize (swap-args >) 0))
+
+
+[c] LEAF?
+
+(define (leaf? node)
+  (null? (children node))
+
+This is a composition of functions:
+
+(define leaf? (compose null? children))
+
+
+Scoring: One point each.
+
+
+5.  Mystery function on Trees
+
+(define (mystery tree)
+  (if (null? (children tree))
+      (make-tree (datum tree) '())
+      (make-tree (+ (datum tree) 100)
+		 (map mystery (cdr (children tree))))))
+
+This function says:  If the node is a leaf, return a leaf node with the
+same datum.  (This is actually unnecessarily complicated; it could have
+just returned the argument TREE itself, since the node it constructs has
+the same datum and the same (empty) children.)  If the node isn't a leaf,
+add 100 to its datum, and recursively apply the same function to its
+children, but omit the first child (because of the CDR call).
+
+In the given tree, the root node (datum 1) has three children, so we add
+100 to its datum (giving 101), we omit the subtree headed by the node with
+datum 2, and we recursively process nodes 3 and 4.
+
+Node 3 (I'm using this as an abbreviation for "the node with datum 3" and
+similarly for the other nodes) has two children, so we add 100 to its
+datum, omit the first child (6), and recursively process the other child
+(node 7).
+
+Node 7 has no children, so we just return a leaf with datum 7.
+
+Node 4 has one child.  So we add 100 to its datum, omit its first (only)
+child 8, and recursively process its other children -- but there aren't
+any, so the node with datum 104 will be a leaf node in the resulting tree.
+
+Omitting a node doesn't just mean omitting the datum of that node; we
+never look at its children either.  So we don't have to think about nodes
+5, 9, and 10.
+
+Don't forget that this function builds a new tree!  It doesn't mutate the
+argument tree.  In particular, one common wrong answer was to return a
+tree with 10 nodes, just like the argument tree, but with 100 added to
+some of the data.  The correct answer is a tree with only the four nodes
+mentioned earlier as part of the result:
+
+			       101
+			      /   \
+			    103   104
+			     |
+			     7
+
+Another too-common mistake was to draw a tree in which some nodes have
+lists as the datum.  For example, the child of the 103 node was shown as
+having (7) as its datum, or the 104 node had a child with the empty list
+as its datum.  These errors, I think, come from not respecting the data
+abstraction, but instead trying to translate the tree selectors and
+constructor into operations on pairs.  As you can see from the explanation
+above, there is no need to think about how tree nodes are represented!  The
+only pair operation used is the CDR in the procedure, and that's because
+(CHILDREN TREE) returns a forest -- a list of trees -- rather than a single
+tree node.
+
+Several people thought that a Scheme error would result from the expression
+
+	(map mystery (cdr (children tree)))
+
+when it is applied to the 4 node, which has only one child, because in this
+case the expression is equivalent to
+
+	(map mystery '())
+
+But there's nothing wrong with this -- MAP is happy to take the empty list
+as its second argument, in which case it returns the empty list without
+ever calling MYSTERY.  Empty lists are legitimate lists!
+
+
+Scoring:
+
+5  Correct.
+
+4  Correct except that instead of 101, 103, and 104, the values in those
+   nodes are computed by some different arithmetic; most commonly these
+   nodes have the data 101, 301, and 401.  Node 7 must be correct.
+
+3  Right shape, but one incorrect datum (most often 107 instead of 7).
+
+2  The four correct nodes plus one or two extras, including the case of
+   "error" as a child of node 104.
+
+2  The solution obtained by ignoring the CDR in the procedure: 10 nodes
+   in the same shape as the original, but with 1, 2, 3, 4, and 8 changed
+   to 101, 102, 103, 104, and 108.
+
+0  "Error" as the complete answer without an explanation.
+
+0  Any list structure in the tree data.
+
+0  Anything else, including the "mutation" solution mentioned earlier with
+   10 nodes like the original but with 1, 3, and 4 changed to 101, 103, 104.
+
+
+
+6.  Scheme to OOP
+
+We are given
+
+(define foo
+  (let ((a 3))
+    (LAMBDA (B)			;; This is the class FOO
+      (let ((c 4))
+	(LAMBDA (MESSAGE)	;; This is the instance's dispatch procedure
+	  (cond ((eq? message 'hi)
+		 (+ a b))
+		(else
+		 (+ c message))))))))
+
+The scope of the LET variable A encloses the procedure representing the class,
+so it's a class variable.  B is an argument to the class, so it's an
+instantiation variable.  And C is inside the scope of the class, but outside
+the scope of the instance, so it's an instance variable -- each instance has
+its own C.  Therefore:
+
+(define-class (foo b)
+  (class-vars (a 3))
+  (instance-vars (c 4))
+  (method (hi)
+    (+ a b))
+  (default-method
+    (+ c message)))
+
+The dispatch procedure looks explicitly for the message HI and provides
+a method for it; the ELSE clause in the dispatch procedure handles any
+other message, so it's a default method.
+
+Most people got the translation of the LET expressions for A and C right,
+although a few people reversed them and a few people thought A and C were
+the same kind of variable.  B was trickier; some people didn't realize
+that that LAMBDA represents the class, and instead thought that B was a
+formal parameter of a method.
+
+Similarly, some people thought the inner LAMBDA expression represents a
+method rather than a dispatch procedure, so they wrote methods with
+MESSAGE as a parameter.
+
+As in any object class definition, it's possible to have only a default
+method that checks for particular messages explicitly:
+
+  (default-method
+    (if (eq? message 'hi)
+	(+ a b)
+	(+ c message)))
+
+and we accepted that, although it's contrary to the spirit of OOP.  But
+most people who were confused about the meaning of the inner LAMBDA came
+up with incorrect solutions, such as
+
+  (method (hi message b) ...)
+  (default-method (message) ...)
+  (method (hi) (if ...))
+
+Scoring:  The correct solution has five components: the use of B as an
+instantiation variable, and the four clauses within the define-class (A, C,
+HI, and DEFAULT-METHOD).  We subtracted one point for each missing or
+incorrect component.  Incorrect solutions that tried to combine the HI
+method with the default method lost both points, except for the
+  (method (hi) (if ...))
+version (no parameter to HI!), which lost only one point for the methods.
+
+
+7.  Environment diagrams
+
+The diagrams have many features in common:  They all have a global frame
+and an additional frame E1; they all have a symbol F bound to a procedure.
+But there are two things that differ among diagrams:
+
+	* The symbol F is in frame G (diagrams A and B) or in frame
+	  E1 (diagrams C and D).
+
+	* The procedure's right bubble points to frame G (diagrams
+	  A and C) or to frame E1 (diagrams B and D).
+
+So, to figure out this question, for each of the four Scheme programs we
+have to ask "where is the procedure created?" and "where is F bound?"
+
+(let ((f (lambda (x) x)))
+ 'okay) 
+
+	Here the LAMBDA expression is evaluated in the global environment,
+	because LET value expressions are evaluated *before* the implicit
+	procedure created by the LET is invoked.  But the binding for F is
+	made locally, in the frame E1 that's created by the LET.  So this
+	is diagram C: procedure points to G, F bound in E1.
+
+(define f
+ (let ()
+   (lambda (x) x)))
+
+	This time the LAMBDA expression is evaluated in the body of the LET,
+	so its current environment is E1, and so that's what the right bubble
+	remembers.  But the DEFINE is in the global environment, so that's
+	where F is bound.  This is diagram B: procedure points to E1, F
+	bound in G.
+
+(let ()
+ (define f (lambda (x) x)))
+
+	This time both the LAMBDA and the DEFINE are in the body of the LET,
+	so both of them have E1 as the current environment.  This is diagram
+	D: procedure points to E1, F bound in E1.
+
+(define (f) f)
+(f)
+
+	Here we have a straightforward global definition of a procedure F,
+	so both the (implicit) LAMBDA and the DEFINE happen in G.  So this
+	is diagram A: procedure points to G, F bound in G.  (Frame E1 is
+	created by the second, separate expression, which invokes F.)
+
+Most students got this correct.  The most common wrong answer was DBCA.
+Choosing D for the first expression comes from the frequent misunderstanding
+in which students think that the expressions that provide the values for the
+LET variables are evaluated inside the scope of the LET.  I'm not sure how
+anyone would choose C for the third expression, but probably it's because you
+assumed (correctly) that each diagram was used once.
+
+Scoring: one point each.
+
+
+8.  CADR for message-passing pairs
+
+A pair made by MAKE-PAIR can handle CAR and CDR messages directly because
+its local state variables X and Y contain the desired values.  But in order
+to handle the CADR message, it has to find its own CDR (which is Y) and
+send a CAR message to that other pair:
+
+(define (make-pair x y)
+  (lambda (msg)
+    (cond ((eq? msg 'car) x)
+	  ((eq? msg 'cdr) y)
+	  ((EQ? MSG 'CADR) (Y 'CAR))	;; <<=== This line added!
+	  (else (error "I have no idea what you're talking about.")) )))
+
+One common mistake was (ASK Y 'CAR); this has the idea, but we're using
+plain Scheme message passing, not the OOP language.
+
+Many students used roundabout means to find the pair's CDR, such as
+
+	   ((eq? msg 'cadr) (((make-pair x y) 'cdr) 'car))
+
+presumably because you mistrusted a simple Y as something you can invoke.
+This works, but it really violates the spirit of the problem -- it creates a
+new pair every time you look at the pair -- and didn't get full credit.
+
+Another common error was (CAR Y).  Unless you explicitly redefine CAR to
+use the message-passing pairs, this will invoke the ordinary CAR that
+expects a built-in Scheme pair as its argument, not a procedure.  We
+named the pair constructor MAKE-PAIR rather than CONS to make it clear
+that we didn't mean to eliminate the regular pairs, and our example says
+(ABC 'CAR) rather than (CAR ABC).
+
+Of course the worst mistake was to build the specific example ABC into
+the solution!
+
+Scoring:
+
+3  Correct.
+
+2  (ASK Y 'CAR)
+
+2  (X 'CDR)		; this would give the CDAR, not the CADR.
+
+2  Working solutions that call MAKE-PAIR.
+
+1  (X 'CAR) or (Y 'CDR)	; CAAR and CDDR.
+
+0  Anything else, including (CAR Y).
+
+
+
+9.  List mutation.
+
+Here is the box-and-pointer diagram *before* doing any mutation:
+
+---> XX------------> XX------------> X/
+     |               |               |
+     V               V               V
+
+     XX---> X/       XX---> X/       E
+     |      |        |      |
+     V      V        V      V
+
+     A      B        C      D
+
+The expression (SET-CAR! (CADR LST) (CDDR LST)) modifies the pair that is
+the CADR of the original list -- the CAR of the CDR.  (CDR LST) is the
+second pair of the spine, in the top row.  CAR of that pair is the first
+pair in the spine of the sublist (C D).  So we are going to change the CAR
+of that pair, replacing C with something.  With what?  With the value of
+(CDDR LST), the second argument to SET-CAR!.  (CDDR LST) is the third
+pair of the spine of the entire list, the one whose CAR is E.  So after
+this first mutation we have
+
+---> XX------------> XX---------->-> X/
+     |               |          /    |
+     V               V          *    V
+                                *
+     XX---> X/       XX---> X/  *    E
+     |      |        *      |   *
+     V      V        *      V   *
+                     *          *
+     A      B        *      D   *
+                     *          *
+                     ************
+
+The second mutation, (SET-CAR! (CAR LST) (CADDR LST)), modifies (CAR LST),
+which is the first element of the big list -- the first pair of the spine
+of the sublist (A B).  We change the CAR of this pair, so that instead of
+pointing to A, it points to the CADDR of the big list, which is the third
+element, the symbol E:
+
+---> XX------------> XX---------->-> X/
+     |               |          /    |
+     V               V          *    V
+                                *
+     XX---> X/       XX---> X/  *    E
+     *      |        *      |   *
+     *      V        *      V   *    ^
+     *               *          *    *
+     *      B        *      D   *    *
+     *               *          *    *
+     *               ************    *
+     *                               *
+     *********************************
+
+Notice that the first mutation points to a pair, not to E, but the second
+one points to E.  This is the difference between (CDDR LST) and (CADDR LST).
+
+It's okay if you draw another E underneath the relevant pair, instead of
+drawing an arrow over to the original E.  Since two equal symbols are always
+EQ, it's not important to distinguish two equal symbols in the diagram.
+
+The third mutation is (SET-CDR! (CAR LST) (CDAR LST)).  This says, "change
+the CDR of (CAR LST) to the CDR of (CAR LST)"!  In other words, it doesn't
+really change anything:
+
+---> XX------------> XX---------->-> X/
+     |               |          /    |
+     V               V          *    V
+                                *
+     XX***> X/       XX---> X/  *    E
+     *      |        *      |   *
+     *      V        *      V   *    ^
+     *               *          *    *
+     *      B        *      D   *    *
+     *               *          *    *
+     *               ************    *
+     *                               *
+     *********************************
+
+Finally we have (SET-CAR! (CDDR LST) 'X).  This modifies (CDDR LST), which
+is the last pair of the spine.  Its CAR used to point to E, but now points
+to X instead:
+
+---> XX------------> XX---------->-> X/
+     |               |          /    *
+     V               V          *    *
+                                *    V
+     XX***> X/       XX---> X/  *    
+     *      |        *      |   *    X
+     *      V        *      V   *    
+     *               *          *    
+     *      B        *      D   *    E
+     *               *          *    
+     *               ************    ^
+     *                               *
+     *********************************
+
+So the printed representation of the final result is:
+
+	((E B) ((X) D) X)
+
+The most common wrong answer was ((X B) ((X) D) X).  This comes from thinking
+that the last mutation changes *everything* that points to E so that it points
+to X instead.  But that would be true only if the pair (CAR LST) pointed to
+the *pair* (CDDR LST), whose CAR is changed from E to X, rather than pointing
+directly to E.
+
+Another common wrong answer was ((E B) (X D) X), ignoring the fact that the
+first mutation replaces the letter C with the *pair* (CDDR LST), which is a
+list, not a symbol; its printed representation is (X).
+
+A common error in the diagram itself was to create new pairs, most often
+making a *copy of* (CDDR LST) to be the CAR of (CADR LST).
+
+Another misunderstanding, which led to huge errors in the diagram, was to
+think that (CAR LST) means the first *pair in the spine* of LST, rather
+than the first *element* of LST.  Similarly, students misinterpreted
+(CADR LST) to mean the second pair of the spine, and so on.
+
+Scoring:  We subtracted one point per wrong change in the diagram (out of
+the four possible changes), and one point if the printed representation
+didn't match your diagram.
+
+
+10.  Scheme vs Logo evaluators
+
+In Scheme, evaluating the expression (+ A 3) requires the evaluator to look up
+two variables: + and A.  Since we are giving MC-EVAL an environment that only
+has a binding for A, this first expression gives the result
+
+	ERROR: Unbound variable +
+
+In Logo, procedure names aren't part of the environment, but are found in a
+separate, global table that's used automatically by LOGO-EVAL.  So in order to
+evaluate the Logo expression (SUM 2 :A), we have to look up A in the
+environment, but we don't need SUM in the environment.  Therefore the result
+of this evaluation is
+
+	5
+
+
+One too-common error was to say (+ A 3) as the value returned in the first
+case.  Presumably students who said this were reacting to the fact that the
+expression (+ A 3) is quoted when used as an argument to MC-EVAL.  But this
+just means that the argument is (+ A 3) rather than being the result of
+evaluating (+ A 3) in the underlying STk evaluator!
+
+Scoring:  Two points each.  We accepted any ERROR message for the first part.
+
+For the second part, we accepted 6 instead of 5 (because it's not important
+if you didn't notice that the second expression used 2 rather than 3) for
+full credit.
+
+We gave half credit (one point) to either of two particular wrong answers
+to the second part:
+
+	You don't say what to do with 5
+
+(which would be correct if we were calling DRIVER-LOOP instead of LOGO-EVAL),
+and
+
+	5  =no-value=
+
+(which can't be correct, since it's two values instead of one, but presumably
+is meant to show the values computed by EVAL-LINE, although that isn't right
+either because EVAL-LINE returns a value as soon as it gets anything other
+than =no-value= from evaluating an expression).
+
+
+11.  Streams
+
+The first two elements are explicitly given as A and B.  The remaining
+elements are the result of interleaving two streams, so we can draw a
+picture like this:
+
+
+	A  B  ___       ___       ___       ___
+
+                   ___       ___       ___       ___
+
+
+The second argument to INTERLEAVE is a stream containing only elements
+that are the symbol B, so we can start to fill this in:
+
+
+	A  B  ___       ___       ___       ___
+
+                   _B_       _B_       _B_       _B_
+
+
+To fill in the top row, we just copy the entire stream FOO.  We already
+know FOO's first two elements, so we can fill those in, and that tells us
+FOO's third and fifth elements.  (Its fourth element is the first B on the
+bottom row.)
+
+
+	A  B  _A_       _B_       _A_       _B_
+
+                   _B_       _B_       _B_       _B_
+
+
+Putting this back into a single row gives the solution:
+
+	A  B  A  B  B  B  A  B  B  B
+
+
+Scoring:  We subtracted one point per wrong letter.  This means that the
+common error in which only the first letter is A [A B B B B B B B B B B]
+got one point.
+
+Exception:  Some people apparently think that STREAM-FILTER keeps only
+the elements that *don't* satisfy the predicate, so they put a stream of
+As in the bottom row rather than a stream of Bs.  This gives the incorrect
+solution A B A A B A A A A A, to which we gave one point.
+
+
+12.  Logic programming
+
+As a reminder, here's ASSOC written in Scheme:
+
+(define (assoc key alist)
+  (cond ((null? alist) #f)
+	((equal? key (caar alist)) (car alist))
+	(else (assoc key (cdr alist)))))
+
+The first COND clause does not have any analog in the logic program!  In
+logic programming, if nothing satisfies the question we're asking, we just
+don't match any rule.  We don't want a rule that shows a value of #F.
+
+Here's the rule corresponding to the second COND clause:
+
+(assert! (rule (assoc ?key ((?key . ?value) . ?rest) (?key . ?value))))
+
+No condition is necessary for this rule; the pattern says it all.  But
+it would be okay to show this rule in a form closer to that of the Scheme
+program:
+
+(assert! (rule (assoc ?key (?car . ?cdr) ?car)
+	       (and (same ?car (?caar . ?cdar))
+		    (same ?key ?caar))))
+
+The second COND clause is a little tricky, because we only want to allow
+the recursion if the key doesn't match the first entry.  In Scheme, COND
+automatically handles this, because COND can only return one value, so it
+doesn't look at any clauses after the first successful one.  But logic
+programming allows multiple results, so we have to explicitly disable the
+recursion in case of a match:
+
+(assert! (rule (assoc ?key ((?caar . ?cdar) . ?rest) ?result)
+	       (and (assoc ?key ?rest ?result)
+		    (not (same ?key ?caar)))))
+
+To make this work we also have to define the SAME relation:
+
+(assert! (rule (same ?x ?x)))
+
+but we didn't require this to be explicitly included in your solution.
+
+
+Some people tried to use a single rule that matches any association list
+that has the desired key anywhere in it, like this:
+
+(rule (assoc ?key (?left . (?key . ?value) . ?right) (?key . ?value))) ;WRONG!
+
+This isn't such a bad idea, except that there is no (x . y . z) notation for
+a list that has element Y in the middle.  But the desired result can be
+obtained using the APPEND rules:
+
+(assert! (rule (assoc ?key ?alist (?key . ?value))
+	       (and (append ?left ((?key . ?value) . ?right) ?alist)
+		    (not (assoc ?key ?left ?something)))))
+
+The NOT clause is required to eliminate duplicate matching keys.  Alas,
+most people who tried this didn't quite use APPEND correctly.  The worst
+problem was to try to use it as a function rather than a relation:
+
+	(rule (assoc ?key (append ?left ((?key . ?value) . ?right))
+		          (?key . ?value)))	; WRONG!!!
+
+This is an attempt to use the "return value" from APPEND as part of the
+pattern for the ASSOC rule, but APPEND doesn't return a value.  It's a
+relation that succeeds or fails, and the appended list is one of the
+components of the relation, as in the correct version above.
+
+
+The most common error was to include spurious base cases, such as
+
+	(rule (assoc ?key () #f))	; WRONG!
+
+A more subtle error was to try to eliminate duplicate keys in the
+association list in the wrong rule:
+
+(assert! (rule (assoc ?key ((?key . ?value) . ?rest) (?key . ?value))
+	       (not (assoc ?key ?rest ?something))))	; WRONG!
+
+This rule would find the last matching key, not the first matching key,
+in the association list.
+
+
+Scoring:
+
+5  Correct.
+
+4  Extracts just the key, or just the value, rather than the entire pair.
+
+4  Finds the last matching key rather than the first one.
+
+3  Finds all matching keys (no NOT clause).
+
+3  Spurious base case for empty list.
+
+2  No recursive rule at all.
+
+2  Other "has the idea" but non-working solutions with a rule that tries
+   to match the car of the association list.
+
+0  No rule matching the car of the association list (recursive rule only).
+
+0  Has the example built in (e.g., only works for lists of length four).
+
+0  Composition of functions (like the incorrect APPEND version above).
+
+0  Anything not mentioned above.
+
+
+13.  Concurrency
+
+All of the examples try to call the procedures F and G, which both modify
+the variable X, and must therefore be protected against each other.
+Therefore, we must use the same serializer for both of them.
+
+(parallel-execute (s f) (t g))
+
+	This uses two different serializers for the two thunks, so they
+	are not protected against each other.  This can give rise to
+	INCORRECT RESULTS.
+
+(parallel-execute (s f) (s g))
+
+	This is the correct way to do it -- a single serializer protects
+	the variable X, and every process that depends on X is protected
+	using S.  So it produces NEITHER incorrect results nor deadlock.
+
+(parallel-execute (s (t f)) (t g))
+
+	This has an unnecessary invocation of serializer S.  Both processes
+	are protected by T, so no incorrect results are possible, and nothing
+	is added by calling S also.  But since S is used for only one process,
+	there will be NEITHER incorrect results nor deadlock.
+
+(parallel-execute (s (t f)) (s g))
+
+	This is just like the previous case: S does the needed protection,
+	and T is unhelpful but not harmful either, since only one process
+	uses it.  So NEITHER problem can arise.
+
+(parallel-execute (s (t f)) (t (s g)))
+
+	There won't be incorrect results, since both processes use the same
+	serializer (either S or T can be considered as the useful one).  The
+	second serializer is unnecessary.  But this time, since two processes
+	use the same two serializers, in different orders, DEADLOCK is
+	possible.
+
+Scoring: One point each.
+
+
+14.  Tree to binary tree.
+
+The crucial point here is that two different abstract data types (Tree and
+Binary Tree) are involved.  A binary tree isn't just a Tree!  It's different
+because if a node has exactly one child, a Binary Tree can distinguish whether
+this is the left child or the right child; the Tree type doesn't allow for
+this distinction.  So, for example, you couldn't use the Tree type to
+represent a binary search tree.
+
+We are given a Tree as argument, and asked to return a Binary Tree.
+Therefore, our program should use the *selectors* for the Tree type (namely
+DATUM and CHILDREN), but should use the *constructor* for the Binary Tree
+type (MAKE-BT).
+
+We didn't say explicitly in the problem what the arguments to MAKE-BT should
+be, but we did say it's based on the Binary Tree type in the text (see page
+157), except changing the name from MAKE-TREE to MAKE-BT.  It takes three
+arguments, the three components of a Binary Tree node: entry, left, and right.
+
+(define (tree->bt tree)
+  (if (> (length (children tree)) 2)
+      #f
+      (let ((kids (map tree->bt (children tree))))
+	(cond ((member #f kids) #f)	; propagate failure upward
+	      ((null? kids) (make-bt (datum tree) '() '()))
+	      ((null? (cdr kids)) (make-bt (datum tree) (car kids) '()))
+	      (else (make-bt (datum tree) (car kids) (cadr kids)))))))
+
+The most common error was to forget the first COND clause.  It's not good
+enough to return #F if *this* node has three or more children; we also have to
+return #F if any *child* (or grandchild, etc.) of this node has too many
+children.  So we see if the value returned by any recursive call to TREE->BT
+is false, and if so we return false too.
+
+Since MAKE-BT has separate arguments for the left and right branches,
+we need three COND clauses for each of the possible number of children
+in order to put the child(ren) in the right place(s).
+
+We accepted solutions in which MAKE-BT takes a list of length exactly two,
+every time, to specify the two branches of the new node.  But we didn't accept
+solutions in which MAKE-BT takes a list of any number of children, because
+that interface wouldn't allow the user to distinguish the case of a node with
+only a left child from the case of a node with only a right child.  (In this
+problem we say that we aren't going to create any nodes with only a right
+child, but you can't specify a constructor for Binary Trees that doesn't allow
+for that possibility.)
+
+Another common error was data abstraction violations.  These come in two
+forms:  (1) mixing the selectors and constructors for Trees with those for
+Binary Trees, and (2) using list/pair selectors and constructors (CONS, CAR,
+etc.) for either Trees or Binary Trees.  We considered the first category less
+severe than the second, although either kind of DAV really shows a failure to
+understand the point of data abstraction!  (This is true despite the fact that
+a few students wrote essays to try to justify their violations.)
+
+Another severe error was to try to mutate the tree instead of constructing a
+new data structure.  This was rarely explicit (e.g., using SET-CAR!); the
+usual thing was for students to call MAP, ignore its return value, and think
+(apparently) that something has changed in the argument tree.  We referred to
+this in the grading as the "MAP!" error -- using MAP as if it were a mutator.
+
+Scoring:
+
+6  Correct.
+
+4  Correct except that #F from a child isn't propagated to the parent.
+
+2  Case analysis errors, e.g., two-child nodes handled correctly but
+   one-child nodes handled incorrectly.
+
+2  Tree vs. Binary Tree DAV.
+
+0  Tree vs. Pair DAV [e.g., (CAR TREE)].
+
+0  No deep recursion (grandchildren not examined).
+
+0  Pseudo-mutation (using MAP as if it were MAP! mutator).
+
+0  Anything worse.
+
+
+
+15.  SWAP!
+
+This was a relatively easy mutation problem, since there was no need to
+examine inside any lists found as elements of the argument list.  We only
+care about elements of the top-level list.
+
+The first decision to be made is whether this is a job for SET-CAR! or
+for SET-CDR!.  The best choice is SET-CAR!, because we don't want to change
+which pair comes first in the list's spine, in case some variable used in the
+calling procedure is bound to this list.
+
+We want to mutate the pairs of the spine, not any pairs that might be elements
+of the list.  And we need a temporary variable to remember one of the elements
+while we're doing the swapping.
+
+(define (swap! lst)
+  (cond ((null? lst) lst)
+	((null? (cdr lst)) lst)
+	(else (let ((temp (car lst)))
+		(set-car! lst (cadr lst))
+		(set-car! (cdr lst) temp)
+		(swap! (cddr lst))
+		lst))))
+
+Scoring:
+
+6  Correct.
+
+5  Swaps correctly but doesn't return a value.
+
+5  Correct except for base cases.
+
+4  Has the idea:
+    * Uses a temporary variable; and
+    * SET-CAR! of two pairs, with at least one in the spine; and
+    * Recursive;
+   but...
+     - recurs on (CDR LST) instead of (CDDR LST); or
+     - uses SET-CDR! and reorders correctly but loses the head pair; or
+     - has the wrong value in TEMP (a spine pair instead of an element).
+
+3  (set-car! (CAR lst) (cadr lst)) and (set-car! (CADR lst) temp).
+
+2  Has an idea:
+    - only one SET-CxR!; or
+    - no temporary variable; or
+    - mutates two wrong pairs; or
+    - thinks SET! will change a pair, but also uses SET-CxR!.
+
+0  Other, including:
+    - allocates pairs (CONS, LIST, APPEND, etc.); or
+    - no recursion; or
+    - no SET-CxR!; or
+    - SET! of a non-symbol [e.g., (SET! (CAR LST) (CADR LST))].
+
+
+16.  Partial application in MCE
+
+The feature we want to add, which in the programming language literature is
+generally called "partial application," is used when a procedure is called.
+Procedure calling is the job of MC-APPLY, so that's where we have to make the
+change.  (It's possible to do it elsewhere, but less straightforward.)
+
+We are asked to construct a new procedure.  How do we do that?  The best
+answer is to call MAKE-PROCEDURE.  There's no need to construct and then
+evaluate a LAMBDA expression!
+
+What should the procedure look like?  One solution is to do exactly what's
+shown in the question: a procedure whose body is an invocation of the
+underlying procedure.  But this is actually a little tricky, because when we
+get to APPLY we no longer know what *expression* has that procedure as its
+value!  We only have the procedure itself.  So the easiest thing will be if we
+can create a procedure with the same body as the original procedure.  For
+example, if the original procedure is
+
+	(lambda (base exp)
+	  (cond ((= exp 0) 1)
+		((even? exp) (fast-exp (* base base) (/ exp 2)))
+		(else (* base (fast-exp base (- exp 1))))))
+
+then we'll create a procedure
+
+	(lambda (EXP)		;; only this line is different
+	  (cond ((= exp 0) 1)
+		((even? exp) (fast-exp (* base base) (/ exp 2)))
+		(else (* base (fast-exp base (- exp 1))))))
+
+but we'll create it in an environment with BASE bound to 2, as if the
+user had typed
+
+	(let ((base 2))
+	  (lambda (exp)
+	    (cond ((= exp 0) 1)
+		  ((even? exp) (fast-exp (* base base) (/ exp 2)))
+		  (else (* base (fast-exp base (- exp 1)))))))
+
+But of course we can't build this particular example into the solution;
+it has to work for any procedure, with any number of parameters, and with
+any smaller number of arguments given in the invocation.
+
+(define (mc-apply procedure arguments)
+  (cond ((primitive-procedure? procedure)
+	 (apply-primitive-procedure procedure arguments))
+	((compound-procedure? procedure)
+	 (IF (< (LENGTH ARGUMENTS) (LENGTH (PROCEDURE-PARAMETERS PROCEDURE)))
+	     (MAKE-PROCEDURE
+	      (BUTFIRST-N (LENGTH ARGUMENTS)
+			  (PROCEDURE-PARAMETERS PROCEDURE))	; parameters
+	      (PROCEDURE-BODY PROCEDURE)			; body
+	      (EXTEND-ENVIRONMENT				; environment
+	       (FIRST-N (LENGTH ARGUMENTS)
+			(PROCEDURE-PARAMETERS PROCEDURE))
+	       ARGUMENTS
+	       (PROCEDURE-ENVIRONMENT PROCEDURE))) 	; lexical scope!
+	     (eval-sequence
+	      (procedure-body procedure)
+	      (extend-environment
+	       (procedure-parameters procedure)
+	       arguments
+	       (procedure-environment procedure)))))
+	(else
+	 (error
+	  "Unknown procedure type -- APPLY" procedure))))
+
+This solution uses helper procedures to extract the first N parameters,
+and all but the first N parameters, from the original procedure's list of
+parameters:
+
+(define (first-n n lst)
+  (if (= n 0)
+      '()
+      (cons (car lst) (first-n (- n 1) (cdr lst)))))
+
+(define (butfirst-n n lst)
+  ((repeated cdr n) lst))
+
+This is the most elegant solution, because it deals only with values,
+not with expressions -- there's no need to call MC-EVAL anywhere in it.
+It's also possible to solve the problem by manipulating the text of the
+procedure in various ways.  For example, we could try to substitute the
+argument values for the first N parameters in the body, so we'd get the
+procedure
+
+	(lambda (exp)
+	  (cond ((= exp 0) 1)
+		((even? exp) (fast-exp (* 2 2) (/ exp 2)))
+		(else (* 2 (fast-exp 2 (- exp 1))))))
+
+for our example.  This is trickier than it looks to get correct, though.
+In this example the actual argument is a number, which is self-evaluating.
+But suppose the actual argument value is a non-numeric word or a list.
+It won't work to substitute the argument *value* into the body; we have
+to find the argument *expression* (which means we'd have to do the job in
+MC-EVAL rather than in MC-APPLY), or else we have to quote the value each
+time we substitute it.
+
+The key point is to be clear on the difference between an expression and a
+value -- for example, a LAMBDA expression versus a procedure.  We want to
+return a procedure, so either we call MAKE-PROCEDURE or we call
+
+	(mc-eval (make-lambda ...) some-environment)
+
+Which environment should we extend?  The one in the original procedure,
+of course -- we don't want to break Scheme's lexical scope rule.  Some
+solutions passed the current environment from MC-EVAL to MC-APPLY, thereby
+switching to dynamic scope.
+
+Many students came up with solutions modifying EXTEND-ENVIRONMENT instead of
+modifying MC-APPLY.  This is a reasonable first idea, since the problem is
+about matching formal parameters with actual arguments, and that's the job of
+EXTEND-ENVIRONMENT.  But it's really tricky to get this right, because the
+context in which EXTEND-ENVIRONMENT is called is that MC-APPLY is going to use
+the resulting environment to evaluate the body of the procedure, and we don't
+want to evaluate the body in the case of partial application.  Some of you
+actually managed to work around this problem by modifying EVAL-SEQUENCE as
+well as EXTEND-ENVIRONMENT, something along these lines:
+
+	(define (extend-environment vars vals base-env)
+	  (if (= (length vars) (length vals))
+	      (cons (make-frame vars vals) base-env)
+	      (if (< (length vars) (length vals))
+		  (error "Too many arguments supplied" vars vals)
+		  (MAKE-PROCEDURE ...))))
+
+	(define (eval-sequence exps ENV-OR-PROC)
+	  (cond ((COMPOUND-PROCEDURE? ENV-OR-PROC) ENV-OR-PROC)
+		((last-exp? exps) (mc-eval (first-exp exps) env))
+		(else (mc-eval (first-exp exps) env)
+		      (eval-sequence (rest-exps exps) env))))
+
+but this is an ugly solution.  For one thing, EVAL-SEQUENCE might be used
+someplace other than in MC-APPLY, so we shouldn't change its behavior without
+thinking about those other callers.  But even if the call to EVAL-SEQUENCE in
+MC-APPLY is the only one in the program, it's ugly to have a procedure named
+EVAL-SEQUENCE that sometimes doesn't actually evaluate a sequence!  We
+accepted working solutions on this model, but you shouldn't get in the habit
+of designing this way.
+
+
+Scoring:  There are too many variants to list them all.  We decided to group
+them according to one central issue: do they actually return a procedure?
+
+6  Correct.
+
+5  Correct except for some trivial error.
+
+4  Has the idea: Checks for length mismatch between parameters and arguments,
+   and returns a procedure if there are fewer parameters, but something is
+   wrong with the new procedure's parameters, body, or environment.
+
+2  Has an idea:  Checks for length mismatch, but then returns a lambda
+   expression, an environment, or something else that isn't an MCE procedure
+   (including an STk procedure formed by an underlying-Scheme LAMBDA
+   expression!).
+
+0  Anything else, including modifying only EVAL-SEQUENCE.

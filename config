@@ -1,0 +1,14 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+	ignorecase = true
+	precomposeunicode = true
+	sshCommand = ssh -i /Users/spareuser/.ssh/theurere-github/id_rsa -F /dev/null
+[user]
+	email = theurer@gmail.com
+	name = theurere
+[remote "origin"]
+	url = git@github.com:theurere/berkeley_cs61a_spring-2011_archive.git
+	fetch = +refs/heads/*:refs/remotes/origin/*

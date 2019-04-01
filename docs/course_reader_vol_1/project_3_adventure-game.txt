@@ -1,0 +1,718 @@
+Project:  Write an adventure game.  We'll provide most of the program.  You
+will mostly make modification and some additions.
+
+This project is designed to be done by two people working in parallel, then
+combining your results into one finished product.  (Hereafter the two partners
+are called Person A and Person B.)  But you will combine your work to hand in
+a single report for your group.
+
+The project begins with two exercises that everyone should do; these
+exercises do not require new programming, but rather familiarize you
+with the overall structure of the program as we've provided it.  After
+that, each person has separate exercises.  There is one final exercise
+for everyone that requires the two partners' work to be combined.
+(Therefore, you should probably keep notes about all of the procedures
+that you've modified during the project, so you can notice the ones that
+both partners modified independently.)
+
+This is a two-week project.  Each week, your group should
+hand in one paper (not one per person) including a listing of your modified
+adv.scm program with the modifications highlighted, and a transcript of the
+testing of your work.  Indicate on the paper which of you is person A and
+which is person B.
+
+Scoring:  Each person works on nine problems.  Three of these (numbers
+1, 2, and 9) are common to the two partners; the others are separate.
+You hand in a single solution to each problem.  Both partners get
+the points awarded to the group for problems 1, 2, and 9; each
+person gets the points for his or her own problems 3 through 8.  This means
+that your score for the project is mostly based on your individual work but
+also relies partly on the other member of your group.  For the first two
+problems, you could get away with letting your partner do the
+work, but you shouldn't because those problems are necessary to help you
+understand the structure of the entire project.  Problem 9 requires that both
+partners have already done their separate work, and meet together to
+understand each other's solutions, so probably nobody will get credit for it
+unless both have done their jobs.
+
+(Acknowledgement:  This assignment is loosely based on an MIT homework
+assignment in their version of this course.  But since this is Berkeley we've
+changed it to be politically correct; instead of killing each other, the
+characters go around eating gourmet food all the time.  N.B.:  Unless you
+are a diehard yuppie you may feel that eating gourmet food does not express
+appropriate sensitivity to the plight of the homeless.  But it's a start.)
+
+In this laboratory assignment, we will be exploring two key ideas: the
+simulation of a world in which objects are characterized by a set of state
+variables, and the use of message passing as a programming technique for
+modularizing worlds in which objects interact.
+
+OBJECT-ORIENTED PROGRAMMING is becoming an extremely popular methodology for
+any application that involves interactions among computational entities.
+Examples:
+
+	-- operating systems (processes as objects)
+	-- window systems (windows as objects)
+	-- games (asteroids, spaceships, gorillas as objects)
+	-- drawing programs (shapes as objects)
+
+
+GETTING STARTED
+To start, copy the following five files into your directory:
+   ~cs61a/lib/obj.scm           The object-oriented system
+   ~cs61a/lib/adv.scm           The adventure game program
+   ~cs61a/lib/tables.scm	An ADT you'll need for parts A5 and B4
+   ~cs61a/lib/adv-world.scm     The specific people, places, and things
+   ~cs61a/lib/small-world.scm   A smaller world you can use for debugging
+
+To work on this project, you must load these files into Scheme in the
+correct order: obj.scm first, then adv.scm and tables.scm when you're using
+that, and finally the particular world you're using, either adv-world.scm or
+small-world.scm.  The work you are asked to do refers to adv-world.scm;
+small-world.scm is provided in case you'd prefer to debug some of your
+procedures in a smaller world that may be less complicated to remember and
+also faster to load.
+
+The reason the adventure game is divided into adv.scm (containing the
+definitions of the object classes) and adv-world.scm (containing the
+specific instances of those objects in Berkeley) is that when you change
+something in adv.scm you may need to reload the entire world in order for
+your changed version to take effect.  Having two files means that you don't
+also have to reload the first batch of procedures.
+
+
+In this program there are three classes: THING, PLACE, and PERSON.
+
+Here are some examples selected from adv-world.scm:
+
+;;; construct the places in the world
+(define Soda (instantiate place 'Soda))
+(define BH-Office (instantiate place 'BH-Office))
+(define art-gallery (instantiate place 'art-gallery))
+(define Pimentel (instantiate place 'Pimentel))
+(define 61A-Lab (instantiate place '61A-Lab))
+(define Sproul-Plaza (instantiate place 'Sproul-Plaza))
+(define Telegraph-Ave (instantiate place 'Telegraph-Ave))
+(define Noahs (instantiate place 'Noahs))
+(define Intermezzo (instantiate place 'Intermezzo))
+(define s-h (instantiate place 'sproul-hall))
+
+;;; make some things and put them at places
+(define bagel (instantiate thing 'bagel))
+(ask Noahs 'appear bagel)
+
+(define coffee (instantiate thing 'coffee))
+(ask Intermezzo 'appear coffee)
+
+;;; make some people
+(define Brian (instantiate person 'Brian BH-Office))
+(define hacker (instantiate person 'hacker Pimentel))
+
+;;; connect places in the world
+
+(can-go Soda 'up art-gallery)
+(can-go art-gallery 'west BH-Office)
+(can-go Soda 'south Pimentel)
+
+Having constructed this world, we can now interact with it by sending
+messages to objects.  Here is a short example.
+
+; We start with the hacker in Pimentel.
+
+> (ask Pimentel 'exits)
+(NORTH SOUTH)
+> (ask hacker 'go 'north)
+HACKER moved from PIMENTEL to SODA
+
+
+We can put objects in the different places, and the people can then take the
+objects:
+
+> (define Jolt (instantiate thing 'Jolt))
+JOLT
+> (ask Soda 'appear Jolt)
+APPEARED
+> (ask hacker 'take Jolt)
+HACKER took JOLT
+TAKEN
+
+You can take objects away from other people, but the management is not
+responsible for the consequences...  (Too bad this is a fantasy game, and
+there aren't really vending machines in Soda that stock Jolt.)
+
+PART I:
+
+The first two exercises in this part should be done by everyone -- that is,
+everyone should actually sit in front of a terminal and do it!  It's okay to
+work in pairs as long as you all really know what's going on by the time
+you're finished.  (Nevertheless, you should only hand in one solution, that
+both agree about.)  The remaining exercises have numbers like "A3"
+which means exercise 3 for Person A.
+
+After you've done the work separately, you should meet together
+to make sure that you each understands what the other person did, because
+the second week's work depends on all of the first week's work.  You can
+do the explaining while you're merging the two sets of modifications into
+one adv.scm file to hand in.
+
+1.  Create a new person to represent yourself.  Put yourself in a new place
+called Dormitory (or wherever you live) and connect it to campus so that you
+can get there from here.  Create a place called Kirin, north of Soda.
+(It's actually on Solano Avenue.)  Put a thing called Potstickers there.
+Then give the necessary commands to move your character to Kirin, take
+the Potstickers, then move yourself to where Brian is, put down the
+Potstickers, and have Brian take them. Then go back to the lab and get back
+to work. (There is no truth to the rumor that you'll get an A in the course
+for doing this in real life!)  All this is just to ensure that you know how
+to speak the language of the adventure program.
+
+LIST ALL THE MESSAGES THAT ARE SENT DURING THIS EPISODE.  It's a good idea
+to see if you can work this out in your head, at least for some of the
+actions that take place, but you can also trace the ASK procedure to get
+a complete list.  You don't have to hand in this listing of messages.  (Do
+hand in a transcript of the episode without the tracing.)  The point is that
+you should have a good sense of the ways in which the different objects send
+messages back and forth as they do their work.
+
+[Tip:  we have provided a MOVE-LOOP procedure that you may find useful as
+an aid in debugging your work.  You can use it to move a person repeatedly.]
+
+
+2.  It is very important that you think about and understand the kinds of
+objects involved in the adventure game.  Please answer the following questions:
+
+2A.  What kind of thing is the value of variable BRIAN?
+
+Hint:  What is returned by scheme in the following situation:
+     You type:     > BRIAN
+
+
+2B.   List all the messages that a PLACE understands.  (You might want to
+maintain such a list for your own use, for every type of object, to help
+in the debugging effort.)
+
+
+2C.   We have been defining a variable to hold each object in our world.
+For example, we defined bagel by saying:
+
+     (define bagel (instantiate thing 'bagel))
+
+This is just for convenience.  Every object does not have to have a
+top-level definition.  Every object DOES have to be constructed and
+connected to the world.  For instance, suppose we did this:
+
+> (can-go Telegraph-Ave 'east (instantiate place 'Peoples-Park))
+
+;;; assume BRIAN is at Telegraph
+> (ask Brian 'go 'east)
+
+What is returned by the following expressions and WHY?
+
+> (ask Brian 'place)
+
+> (let ((where (ask Brian 'place)))
+       (ask where 'name))
+
+>  (ask Peoples-park 'appear bagel)
+
+
+
+2D.  The implication of all this is that there can be multiple names for
+objects.  One name is the value of the object's internal NAME variable. In
+addition, we can define a variable at the top-level to refer to an object.
+Moreover, one object can have a private name for another object.  For
+example, BRIAN has a variable PLACE which is currently bound to the object
+that represents People's Park.  Some examples to think about:
+
+      > (eq? (ask Telegraph-Ave 'look-in 'east) (ask Brian 'place))
+
+      > (eq? (ask Brian 'place) 'Peoples-Park)
+
+      > (eq? (ask (ask Brian 'place) 'name) 'Peoples-Park)
+
+
+OK.  Suppose we type the following into scheme:
+
+>  (define computer (instantiate thing 'Durer))
+
+
+Which of the following is correct?  Why?
+
+(ask 61a-lab 'appear computer)
+
+or
+
+(ask 61a-lab 'appear Durer)
+
+or 
+
+(ask 61a-lab 'appear 'Durer)
+
+What is returned by (computer 'name)?  Why?
+
+
+2E.  We have provided a definition of the THING class that does not use
+the object-oriented programming syntax described in the handout.  Translate
+it into the new notation.
+
+2F.  Sometimes it's inconvenient to debug an object interactively because
+its methods return objects and we want to see the names of the objects.  You
+can create auxiliary procedures for interactive use (as opposed to use
+inside object methods) that provide the desired information in printable
+form.  For example:
+
+(define (name obj) (ask obj 'name))
+(define (inventory obj)
+  (if (person? obj)
+      (map name (ask obj 'possessions))
+      (map name (ask obj 'things))))
+
+Write a procedure WHEREIS that takes a person as its argument and returns
+the name of the place where that person is.
+
+Write a procedure OWNER that takes a thing as its argument and returns the
+name of the person who owns it.  (Make sure it works for things that aren't
+owned by anyone.)
+
+Procedures like this can be very helpful in debugging the later parts of the
+project, so feel free to write more of them for your own use.
+
+
+Now it's time for you to make your first modifications to the adventure
+game.  This is where you split the work individually.
+
+PART I -- PERSON A:
+
+A3.  You will notice that whenever a person goes to a new place, the place
+gets an 'ENTER message.  In addition, the place the person previously
+inhabited gets an 'EXIT message.  When the place gets the message, it calls
+each procedure on its list of ENTRY-PROCEDURES or EXIT-PROCEDURES as
+appropriate.  Places have the following methods defined for manipulating
+these lists of procedures:  ADD-ENTRY-PROCEDURE, ADD-EXIT-PROCEDURE,
+REMOVE-ENTRY-PROCEDURE,
+REMOVE-EXIT-PROCEDURE, CLEAR-ALL-PROCS.  You can read their definitions in the
+code.
+
+Sproul Hall has a particularly obnoxious exit procedure attached to it.  Fix
+SPROUL-HALL-EXIT so that it counts how many times it gets called, and stops
+being obnoxious after the third time.
+
+Remember that the EXIT-PROCS list contains procedures, not names of
+procedures!  It's not good enough to redefine SPROUL-HALL-EXIT, since Sproul
+Hall's list of exit procedures still contains the old procedure.  The best
+thing to do is just to load adv-world.scm again, which will define a new
+sproul hall and add the new exit procedure.
+
+
+
+A4a.  We've provided people with the ability to say something using the
+messages 'TALK and 'SET-TALK.  As you may have noticed, some people around
+this campus start talking whenever anyone walks by.  We want to simulate this
+behavior.  In any such interaction there are two people involved: the one
+who was already at the place (hereafter called the TALKER) and the one who
+is just entering the place (the LISTENER).  We have already provided a
+mechanism so that the listener sends an ENTER message to the place when
+entering.  Also, each person is ready to accept a NOTICE message, meaning
+that the person should notice that someone new has come.  The talker should
+get a NOTICE message, and will then talk, because we've made a person's
+NOTICE method send itself a TALK message.  (Later we'll see that some special
+kinds of people have different NOTICE methods.)
+
+Your job is to modify the ENTER method for places, so that in addition to
+what that method already does, it sends a NOTICE message to each person in
+that place other than the person who is entering.  The NOTICE message should
+have the newly-entered person as an argument.  (You won't do anything with
+that argument now, but you'll need it later.)
+
+Test your implementation with the following:
+
+(define singer (instantiate person 'rick sproul-plaza))
+
+(ask singer 'set-talk "My funny valentine, sweet comic valentine")
+
+(define preacher (instantiate person 'preacher sproul-plaza))
+
+(ask preacher 'set-talk "Praise the Lord")
+
+(define street-person (instantiate person 'harry telegraph-ave))
+
+(ask street-person 'set-talk "Brother, can you spare a buck")
+
+YOU MUST INCLUDE A TRANSCRIPT IN WHICH YOUR CHARACTER WALKS AROUND AND
+TRIGGERS THESE MESSAGES.
+
+
+A4b.  So far the program assumes that anyone can go anywhere they want.
+In real life, many places have locked doors.
+
+Invent a MAY-ENTER? message for places that takes a person as an argument and
+always returns #T.  Then invent a LOCKED-PLACE class in which the MAY-ENTER?
+method returns #T if the place is unlocked, or #F if it's locked.  (It should
+initially be locked.)  The LOCKED-PLACE class must also have an UNLOCK
+message.  For simplicity, write this method with no arguments and have it
+always succeed.  In a real game, we would also invent keys, and a mechanism
+requiring that the person have the correct key in order to unlock the door.
+(That's why MAY-ENTER? takes the person as an argument.)
+
+Modify the person class so that it checks for permission to enter before
+moving from one place to another.  Then create a locked place and test
+it out.
+
+
+A5.  Walking around is great, but some people commute from far away, so
+they need to park their cars in garages.  A car is just a THING, but you'll
+have to invent a special kind of place called a GARAGE.  Garages have two
+methods (besides the ones all places have): PARK and UNPARK.  You'll also
+need a special kind of THING called a TICKET; what's special about it is
+that it has a NUMBER as an instantiation variable.
+
+The PARK method takes a car (a THING) as its argument.  First check to be sure
+that the car is actually in the garage.  (The person who possesses the car
+will enter the garage, then ask to park it, so the car should have entered the
+garage along with the person before the PARK message is sent.)  Then generate
+a TICKET with a unique serial number.  (The counter for serial numbers should
+be shared among all garages, so that we don't get in trouble later trying to
+UNPARK a car from one garage that was parked in a different garage.)  Every
+ticket should have the name TICKET.
+
+You'll associate the ticket number with the car in a key-value table like the
+one that we used with GET and PUT in 2.3.3.  However, GET and PUT refer to a
+single, fixed table for all operations; in this situation we need a separate
+table for every garage.  The file tables.scm contains an implementation of the
+table Abstract Data Type:
+
+constructor: (make-table) returns a new, empty table.
+
+mutator: (insert! key value table) adds a new key-value pair to a table.
+
+selector: (lookup key table) returns the corresponding value, or #F if
+				the key is not in the table.
+
+You'll learn how tables are implemented in 3.3.3 (pp. 266-268).
+For now, just take them as primitive.
+
+Make a table entry with the ticket number as the key, and the car as the
+value.  Then ask the car's owner to lose the car and take the ticket.
+
+The UNPARK method takes a ticket as argument.  First make sure the object
+you got is actually a ticket (by checking the name).  Then look up the
+ticket number in the garage's table.  If you find a car, ask the ticket's
+owner to lose the ticket and take the car.  Also, insert #F in the table for
+that ticket number, so that people can't unpark the car twice.
+
+A real-life garage would have a limited capacity, and would charge money
+for parking, but to simplify the project you don't have to simulate those
+aspects of garages.
+
+
+--- End of Part I for Person A
+
+
+PART I, PERSON B:
+
+
+B3.  Define a method TAKE-ALL for people.  If given that message, a person
+should TAKE all the things at the current location that are not already
+owned by someone.
+
+
+B4a.  It's unrealistic that anyone can take anything from anyone.  We want to
+give our characters a STRENGTH, and then one person can take something from
+another only if the first has greater STRENGTH than the second.
+
+However, we aren't going to clutter up the person class by adding a local
+STRENGTH variable.  That's because we can anticipate wanting to add lots
+more attributes as we develop the program further.  People can have CHARISMA
+or WISDOM; things can be FOOD or not; places can be INDOORS or not.
+Therefore, you will create a class called BASIC-OBJECT that keeps a local
+variable called PROPERTIES containing an attribute-value table like the
+one that we used with GET and PUT in 2.3.3.  However, GET and PUT refer to
+a single, fixed table for all operations; in this situation we need a
+separate table for every object.  The file tables.scm contains an
+implementation of the table Abstract Data Type:
+
+constructor: (make-table) returns a new, empty table.
+
+mutator: (insert! key value table) adds a new key-value pair to a table.
+
+selector: (lookup key table) returns the corresponding value, or #F if
+				the key is not in the table.
+
+You'll learn how tables are implemented in 3.3.3 (pp. 266-268).
+For now, just take them as primitive.
+
+You'll modify the person, place and thing classes so that they will inherit
+from basic-object.  This object will accept a message PUT so that
+	> (ask Brian 'put 'strength 100)
+does the right thing.  Also, the basic-object should treat any message not
+otherwise recognized as a request for the attribute of that name, so
+	> (ask Brian 'strength)
+	100
+should work WITHOUT having to write an explicit STRENGTH method in the
+class definition.
+
+Don't forget that the property list mechanism in 3.3.3 returns #F if you ask
+for a property that isn't in the list.  This means that
+	> (ask Brian 'charisma)
+should never give an error message, even if we haven't PUT that property in
+that object.  This is important for true-or-false properties, which will
+automatically be #F (but not an error) unless we explicitly PUT a #T
+value for them.
+
+Give people some reasonable (same for everyone) initial strength.  Next
+week they'll be able to get stronger by eating.
+
+B4b.  You'll notice that the type predicate PERSON? checks to see if the type
+of the argument is a member of the list '(person police thief).  This means
+that the PERSON? procedure has to keep a list of all the classes that
+inherit from PERSON, which is a pain if we make a new subclass.
+
+We'll take advantage of the property list to implement a better system for
+type checking.  If we add a method named PERSON? to the person class, and
+have it always return #T, then any object that's a type of person will
+automatically inherit this method.  Objects that don't inherit from person
+won't find a PERSON? method and won't find an entry for person? in their
+property table, so they'll return #F.
+
+Similarly, places should have a PLACE? method, and things a THING? method.
+
+Add these type methods and change the implementation of the type predicate
+procedures to this new implementation.
+
+
+B5.  In the modern era, many places allow you to get connected to the net.
+Define a HOTSPOT as a kind of place that allows network connectivity.  Each
+hotspot should have a PASSWORD (an instantiation variable) that you must know
+to connect.  (Note: We're envisioning a per-network password, not a per-person
+password as you use with AirBears.)  The hotspot has a CONNECT method with two
+arguments, a LAPTOP (a kind of thing, to be invented in a moment) and a
+password.  If the password is correct, and the laptop is in the hotspot, add
+it to a list of connected laptops.  When the laptop leaves the hotspot, remove
+it from the list.
+
+Hotspots also have a SURF method with two arguments, a laptop and a text
+string, such as
+
+		"http://www.cs.berkeley.edu"
+
+If the laptop is connected to the network, then the surf method should
+
+	(system (string-append "lynx " url))
+
+where URL is the text string argument.
+
+Now invent laptops.  A laptop is a thing that has two extra methods:  CONNECT,
+with a password as argument, sends a CONNECT message to the place where the
+laptop is.  SURF, with a URL text string as argument, sends a SURF message to
+the place where it is.  Thus, whenever a laptop enters a new hotspot, the user
+must ask to CONNECT to that hotspot's network; when the laptop leaves the
+hotspot, it must automatically be disconnected from the network.  (If it's in
+a place other than a hotspot, the SURF message won't be understood; if it's in
+a hotspot but not connected, the hotspot won't do anything.)
+
+
+--- End of Part I, PERSON B.
+
+
+PART II:
+
+This part of the project includes three exercises for each person, but YOU
+HAVE TO READ EACH OTHER'S CODE midweek, because one partner's exercises 7 and
+8 build on the other partner's exercise 6.  Finally, exercise 9 requires the
+two partners' work to be combined.  You will have to create a version of
+adv.scm that has both partners' changes.  This may take some thinking!  If
+both parners modify the same method in the same object class, you'll have to
+write a version of the method that incorporates both modifications.
+
+
+PART II, PERSON A:
+
+Adv.scm includes a definition of the class THIEF, a subclass of person.
+A thief is a character who tries to steal food from other people.  Of
+course, Berkeley can not tolerate this behavior for long.  Your job is to
+define a POLICE class; police objects catch thieves and send them directly
+to jail.  To do this you will need to understand how theives work.
+
+Since a thief is a kind of person, whenever another person enters the place
+where the thief is, the thief gets a NOTICE message from the place.  When
+the thief notices a new person, he does one of two things, depending on the
+state of his internal BEHAVIOR variable.  If this variable is set to STEAL,
+the thief looks around to see if there is any food at the place.  If there
+is food, the thief takes the food from its current possessor and sets his
+behavior to RUN.  When the thief's behavior is RUN, he moves to a new random
+place whenever he NOTICEs someone entering his current location.  The RUN
+behavior makes it hard to catch a thief.
+
+Notice that a thief object delegates many messages to its person object.
+
+
+A6a.  To help the police do their work, you will need to create a place called
+jail.  Jail has no exits.  Moreover, you will need to create a method for
+persons and thieves called GO-DIRECTLY-TO.  Go-directly-to does not require
+that the new-place be adjacent to the current-place.  So by calling (ASK
+THIEF 'GO-DIRECTLY-TO JAIL) the police can send the thief to jail no matter
+where the thief currently is located, assuming the variable thief is bound
+to the thief being apprehended.
+
+
+A6b.  Thieves sometimes try to leave their place in a randomly chosen
+direction.  This, it turns out, won't work if there are no exits from
+that place -- for example, the jail.  Modify the THIEF class so that
+a thief won't try to leave a place with no exits.
+
+** Now get your partner to explain problem B6 and its solution. **
+
+A7a.  We are now going to invent restaurant objects.  People will interact
+with the restaurants by buying food there.  First we have to make it possible
+for people to buy stuff.  Give PERSON objects a MONEY property, which is a
+number, saying how many dollars they have.  Note that money is not an
+object.  We implement it as a number because, unlike the case of objects
+such as chairs and potstickers, a person needs to be able to spend SOME
+money without giving up all of it.  In principle we could have objects like
+QUARTER and DOLLAR-BILL, but this would make the change-making process
+complicated for no good reason.
+
+To make life simple, we'll have every PERSON start out with $100.  (We should
+really start people with no money, and invent banks and jobs and so on, but
+we won't.)  Create two methods for people, GET-MONEY and PAY-MONEY, each of
+which takes a number as argument and updates the person's money value
+appropriately.  PAY-MONEY must return true or false depending on whether
+the person had enough money.
+
+
+A7b.  Another problem with the adventure game is that Noah's only has one
+bagel.  Once someone has taken that bagel, they're out of business.
+
+To fix this, we're going to invent a new kind of place, called a RESTAURANT.
+(That is, RESTAURANT is a subclass of PLACE.)  Each restaurant serves only
+one kind of food.  (This is a simplification, of course, and it's easy to see
+how we might extend the project to allow lists of kinds of food.)  When a
+restaurant is instantiated, it should have two extra arguments, besides the
+ones that all places have: the class of food objects that this restaurant
+sells,  and the price of one item of this type:
+
+   > (define-class (bagel) (parent (food ...)) ...)
+
+   > (define Noahs (instantiate restaurant 'Noahs bagel 0.50))
+
+Notice that the argument to the restaurant is a CLASS, not a particular
+bagel (instance).
+
+Restaurants should have two methods.  The MENU method returns a list
+containing the name and price of the food that the restaurant sells.
+The SELL method takes two arguments, the person who wants to buy something
+and the name of the food that the person wants.  The SELL method must first
+check that the restaurant actually sells the right kind of food.  If so,
+it should ASK the buyer to PAY-MONEY in the appropriate amount.  If that
+succeeds, the method should instantiate the food class and return the new
+food object.  The method should return #F if the person can't buy the food.
+
+
+A8.  Now we need a BUY method for people.  It should take as argument the
+name of the food we want to buy:  (ask Brian 'buy 'bagel).  The method must
+send a SELL message to the restaurant.  If this succeeds (that is, if the
+value returned from the SELL method is an object rather than #F) the new food
+should be added to the person's possessions.
+
+--- Person A skip to question 9 below.
+
+PART II, PERSON B:
+
+B6.  The way we're having people take food from restaurants is unrealistic
+in several ways.  Our overall goal this week is to fix that.  As a first
+step, you are going to create a FOOD class.
+We will give things that are food two properties, an EDIBLE? property
+and a CALORIES property.  EDIBLE?  will have the value #T if the object is a
+food.  If a PERSON eats some food, the food's CALORIES are added to the
+person's STRENGTH.
+
+(Remember that the EDIBLE? property will automatically be false for objects
+other than food, because of the way properties were implemented in question B4.
+You don't have to go around telling all the other stuff not to be edible
+explicitly.)
+
+Write a definition of the FOOD class that uses THING as the parent class.
+It should return #T when you send it an EDBILE? message, and it should
+correctly respond to a CALORIES message.
+
+Replace the procedure named EDIBLE? in the original adv.scm with a new
+version that takes advantage of the mechanism you've created, instead of
+relying on a built-in list of types of food.
+
+Now that you have the FOOD class, invent some child classes for particular
+kinds of food.  For example, make a bagel class that inherits from FOOD.
+Give the bagel class a class-variable called NAME whose value is the word
+bagel.  (We'll need this later when we invent RESTAURANT objects.)
+
+Make an EAT method for people.  Your EAT method should look at your
+possessions and filter for all the ones that are edible.  It should then add
+the calorie value of the foods to your strength.  Then it should make the
+foods disappear (no longer be your possessions and no longer be at your
+location).
+
+** Now get your partner to explain problem A6 and its solution. **
+
+B7.  Your job is to define the police class.  A policeperson is to have the
+following behavior:
+
+The police stays at one location.  When the police notices a new person
+entering the location, the police checks to see if that person is a thief.
+If the person is a thief the police says "Crime Does Not Pay," then takes
+away all the thief's possessions and sends the thief directly to jail.
+
+Give thieves and police default strengths.  Thieves should start out stronger
+than persons, but police should be stronger than thieves.  Of course, if you
+eat lots you should be able to build up enough STRENGTH (mass?) to take food
+away from a thief.  (Only a character with a lot of CHUTZPAH would take food
+away from the police. :-)
+
+Please test your code and turn in a transcript that shows the thief stealing
+your food, you chasing the thief and the police catching the thief.  In case
+you haven't noticed, we've put a thief in Sproul Plaza.
+
+
+B8.  Now we want to reorganize TAKE so that it looks to see who previously
+possesses the desired object.  If its possessor is 'NO-ONE, go ahead and
+take it as always.  Otherwise, invoke
+	(ask thing 'MAY-TAKE? receiver)
+The MAY-TAKE? method for a thing that belongs to someone should compare
+the strength of its owner with the strength of the requesting person to
+decide whether or not it can be taken.  The method should return #F
+if the person may not take the thing, or the thing itself if the person may
+take it.  This is a little more complicated than necessary right now, but
+we are planning ahead for a situation in which, for example, an object
+might want to make a clone of itself for a person to take.
+
+Note the flurry of message-passing going on here.  We send a message to the
+taker.  It sends a message to the thing, which sends messages to two people
+to find out their strengths.
+
+--- End of Part II, Person B (but both partners do question 8 below).
+
+9.  Combine the two partners' work.  For example, both partners have
+created new methods for the PERSON class.  Both partners have done work
+involving strengths of kinds of people; make sure they work together.
+
+Now make it so that when a POLICE person asks to BUY some food the
+restaurant doesn't charge him or her any money.  (This makes the game
+more realistic...)
+
+******** OPTIONAL **********
+As you can imagine, this is a truly open-ended project.  If you have the
+time and inclination, you can populate your world with new kinds of people
+(e.g., punk-rockers), places (Gilman-St), and especially things (magic
+wands, beer, gold pieces, cars looking for parking places...).
+
+For your enjoyment we have developed a procedure that creates a labyrinth (a
+maze) that you can explore.  To do so, load the file ~cs61a/lib/labyrinth.scm.
+[Note: labyrinth.scm may need some modification to work with the procedures
+you developed in part two of the project.]
+
+Legend has it that there is a vast series of rooms underneath Sproul Plaza.
+These rooms are littered with food of bygone days and quite a few theives.
+You can find the secret passage down in Sproul Plaza.
+
+You may want to modify FANCY-MOVE-LOOP so that you can look around in nearby
+rooms before entering so that you can avoid thieves.  You might also want
+your character to maintain a list of rooms visited on its property list so
+you can find your way back to the earth's surface.

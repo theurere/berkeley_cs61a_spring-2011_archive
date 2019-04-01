@@ -1,0 +1,790 @@
+CS 61A		Solutions to sample final exam #1
+
+1.  Higher order function
+
+Given the hint, most people found this easy:
+
+(define (ordinal num)
+  (lambda (lst) (list-ref lst (- num 1))))
+
+The (- num 1) comes from the fact that list-ref counts element numbers
+from 0, but ordinal counts element numbers from 1.  We defined it that
+way so that the name THIRD would make sense for the result of (ordinal 3)!
+
+The most common mistake was to *invoke* the function created with lambda,
+like this:
+
+(define (ordinal num)
+  ((lambda (lst) (list-ref lst (- num 1))) LST)	;; wrong!!!
+
+Another elegant solution, not using the hint, was this:
+
+(define (ordinal num)
+  (if (= num 1)
+      car
+      (compose (ordinal (- num 1)) cdr)))
+
+I like this one because it's entirely a manipulation of functions; there
+is no explicit reference to the list argument of the functions.
+
+The problem statement should have said "positive integer" rather than
+"nonnegative integer" (left over from an earlier version); we didn't pay
+attention to any code checking for a zero argument, but just graded the
+part for nonzero arguments.
+
+Scoring: No points off for (+ NUM 1) or just NUM.
+         No points off for getting the arguments to list-ref backwards, but...
+	 No credit for just NUM, the list-ref args backwards, and using
+	     variable names that didn't make it clear which argument you
+	     thought was which:
+		(define (ordinal x) (lambda (y) (list-ref x y))) ;; wrong!
+         No credit for other mistakes.
+
+
+2.  Recursive to iterative process
+
+Most people found this easy, too.  As usual, we need an extra variable
+to maintain the partial result in recursive calls of the helper:
+
+(define (count-evens ints)
+  (define (helper INTS RESULT)
+    (cond ((NULL? INTS) RESULT)
+	  ((EVEN? (CAR INTS)) (HELPER (CDR INTS) (+ RESULT 1)))
+	  (ELSE (HELPER (CDR INTS) RESULT))))
+  (helper INTS 0))
+
+There were two common mistakes: returning zero in the base case,
+and forgetting the recursive call for even numbers:
+	  ((even? (car ints)) (+ result 1))	;; wrong!
+
+Scoring: one point, all or nothing.
+
+
+3.  Abstract data types
+
+We made this easy by using FOREST as the formal parameter for the
+helper procedure.  That was a big hint!
+
+There are three abstract data types in this problem:
+
+	* a TREE has selectors DATUM and CHILDREN
+
+	* the datum of a Tree is a WORD OR SENTENCE, with selectors
+	  FIRST and BUTFIRST
+
+	* the children of a Tree is a FOREST, which is to say, a sequence
+	  of Trees; sequences have selectors CAR and CDR.
+
+So the solution is
+
+(define (find-san-cities tree)
+  (if (null? (CHILDREN tree))
+      (if (equal? (FIRST (DATUM tree)) 'San)
+	  (list (DATUM tree))
+	  '())
+      (san-helper (CHILDREN tree))))
+
+(define (san-helper forest)
+  (if (null? forest)
+      '()
+      (append (find-san-cities (CAR forest))
+	      (san-helper (CDR forest)))))
+
+Some people invented selectors for a forest ADT:
+	(define first-tree car)
+	(define rest-of-forest cdr)
+and then used them in san-helper.  We accepted this solution, although
+I don't think it's necessary to invent special types for sequences of
+particular kinds.
+
+A few people asked "What if the datum is a word instead of a sentence?" but
+you weren't asked to debug the program; you were asked specifically to make
+it use the correct selectors and make no other changes.
+
+Scoring:  2 if correct.
+	  1 if only error is CAR instead of FIRST.
+	  0 for anything else.
+
+
+4.  Understanding tree programs
+
+This procedure returns a tree with the same shape as the argument, but
+each datum in the result is the sum of the data along the path from the
+root node to the corresponding node in the argument.
+
+For example, in place of the 2 in the argument we have 3+2 or 5 in the
+result.  In place of the 5 in the argument we have 3+1+5 or 9.
+
+We know this because we see
+	(let ((new (+ (datum tree) above)))
+	  (make-node new
+		     ...))
+which means that the datum at each result node is the sum of the
+corresponding datum in the argument and ABOVE, a value inherited
+from the invocation for this node's parent.  So at each downward
+step we are adding this node's datum to the sum from higher nodes.
+
+So the answer is
+			3
+		      /   \
+                     5     4
+                    / \   / \
+                   6   5 9   7
+
+The crucial point is to understand that the adding of data goes all the
+way from the root node down to whatever node you're looking at -- down,
+not sideways, and certainly not up.
+
+Common wrong answers worth 1 point:
+
+	Add to each node its parent and also its left sibling; if this
+	is done consistently the middle row is 5 6 and the bottom row
+	is 6 6 11 14; if it's done only for the leaves, the bottom row
+	is 6 6 9 12.
+
+Common wrong answers worth 0 points:
+
+	Just adding 3 (the root datum) to everything, so the bottom
+	row is 4 3 8 6.
+
+	Just add the immediate parent to each child, so the bottom
+	row is 3 2 6 4.
+
+	Propagate along a preorder traversal (so that from the 0 in
+	the bottom row, the cost is added to the 1 in the middle row),
+	so the bottom row is 6 6 12 15.
+
+Scoring: 2 points if correct or one arithmetic error (which might be
+	    propagated to lower nodes).
+	 1 point if the addition propagages downward but also
+	    propagates to siblings.
+	 0 points for worse errors (no propagation, propagation upward,
+	    propagation to cousins, child smaller than parent).
+
+
+5.  Generic operators
+
+You didn't have to know about what a GIF or JPEG file is, just that these
+are alternate representations for the same things, just like rectangular
+and polar representations for complex numbers.
+
+We wanted an answer that specifically addresses the number of converters
+required.  If we have 80 equivalent representations, we would ordinarily need
+about 80^2 converters (that's 6400 of them!) to get from anything to anything.
+Of course the core of the answer is that we can use composition of the
+converters in a manner analogous to raising in the arithmetic hierarchy.  But
+saying that isn't quite enough, because the 80 formats are not a hierarchy of
+more and more inclusive types.  (As an analogy, neither rectangular nor polar
+representation is a "higher" data type.)  You had to explain which 160
+converters you'd choose out of the 6400 possibilities.
+
+We accepted three different answers for full credit.  Here's the *best*
+answer:
+
+    PICK ONE REPRESENTATION AS THE STANDARD.  For each of the 80
+    representations, we have a converter from this to standard, and one
+    from standard to this, for a total of 160 converters.
+
+In the case of the standard representation, both converters will
+be the identity function.  This is the best answer because it's
+the most efficient; we can always convert from X to Y in two steps,
+first converting X to Standard, then Standard to Y.
+
+The other two answers involve choosing an arbitrary ordering of the
+representations, either in a circle or in a line:
+
+    NUMBER THE REPRESENTATIONS.  Have 80 converters from number N to
+    number N+1 modulo 80.
+
+    NUMBER THE REPRESENTATIONS.  Have 79 converters from number N to
+    number N+1, plus 79 converters from number N to number N-1.
+
+These answers aren't as good because it could take 79 steps (circle
+version) or 40 steps (linear version with converters up and down)
+to get from X to Y.  This matters, because the conversions are slow!
+
+We didn't accept proposals to write a single "converter" that can convert
+from format X to any of the other 79; that would really be 79 converters
+in one package.
+
+We didn't accept handwavy discussions of data directed programming; the
+point of the question isn't "how do you find the converter you need?" but
+rather "why don't we need 6400 converters?"  Data directed programming
+is irrelevant to that.
+
+(Note to graphics experts:  Of course only the first answer is really
+usable, because some formats are lossy, so it doesn't make sense to
+use them as stepping-stones between non-lossy formats.  The first
+answer works provided that we choose a non-lossy representation
+as the standard!  Non-graphics-experts ignore this paragraph.)
+
+Scoring:  2 points for a correct solution.
+	  1 point for a solution that describes composition of converters
+	     but isn't specific about the arrangement.
+	  0 points for anything else.
+
+
+6.  OOP to normal Scheme
+
+The tricky part is that the PUT-BACK message must return a procedure,
+but the other methods don't:
+
+(define (make-line-obj text)
+  (lambda (msg)
+    (cond ((eq? msg 'text) text)  ;; This one wasn't required
+	  ((eq? msg 'next)
+	   (let ((result (car text)))
+	     (set! text (cdr text))
+	     result))
+	  ((eq? msg 'empty?)
+	   (null? text))
+	  ((eq? msg 'put-back)
+	   (lambda (token)
+	     (set! text (cons token text)))))))
+
+Note that the value part of each COND clause is the same as the
+body of the corresponding OOP message; you didn't have to do anything
+creative!  The only exception is the LAMBDA in the put-back clause.
+
+A common unnecessary complication was to create another local state
+variable as a copy of TEXT:
+        (define (make-line-obj text)
+	  (let ((my-text text))
+	    ...))
+This doesn't hurt, but you run the risk of forgetting to use my-text
+instead of text in the methods.
+
+Common mistakes:
+
+	Invoking the dispatch procedure instead of returning it:
+		(define (make-line-obj text)
+		  (define (dispatch msg)
+		    ...)
+		  (dispatch msg))  ;; This line is wrong!
+	At most 1 point for this.
+
+	Not using a LET in the NEXT method, e.g.:
+		((eq? msg 'next)
+		 (begin (car text)
+			(set! text (cdr text))))  ;; wrong!
+	At most 2 points for this.
+
+	Having the LET outside the COND:
+		(lambda (msg)
+		  (let ((result (car text)))
+		    (cond ...)))
+	The trouble with this is that if TEXT is empty, an error will
+	result, even though the EMPTY? and PUT-BACK methods are still
+	applicable.  At most 2 points for this.
+
+	Misplaced LAMBDA, e.g.,
+		(set! text (lambda (token) (cons token text)))
+	which would set TEXT to be a procedure instead of a list!
+	At most 1 point for this.
+
+Scoring:  3 if correct.
+	  2 if some detail is wrong.
+	  1 if there's no LAMBDA for PUT-BACK but it's otherwise okay,
+	      dispatch procedure invoked instead of returned, etc.
+	  0 if even worse (no dispatch at all, for example).
+
+
+7.  Lexical vs. dynamic scope
+
+The easier part was the diagram for lexical scope, which is what
+Scheme actually uses:  The Y=5 frame extends the X=3 frame, and so
+the value of Z is 8.
+
+This is because the procedure returned by (CHARM 3) is created inside
+the scope of CHARM itself, by the lambda expression in its body, and
+in lexical scope we extend the environment in which the procedure
+was created.  That gives the desired meaning for an internal
+definition; the X in the lambda expression refers to charm's X, not
+the global X.
+
+
+Many people gave the same answer for dynamic scope, but actually
+the result would be different: the Y=5 frame would extend the global
+frame, and so the value of Z would be 6.
+
+This is because the call (... 5) where ... is the procedure returned
+by (charm 3) occurs at top level, not inside the CHARM procedure.
+So it extends the top-level (global) environment.  Dynamically scoped
+languages don't remember how a procedure was created; variable references
+inside the procedure are understood in whatever environment is current
+when the procedure is called.
+
+Some people thought that the value of Z would be a procedure, presumably
+because they interpreted
+	(define z ((charm 3) 5))
+as if it were
+	(define z (charm 3))
+or perhaps (although this would make no sense because charm takes only
+one argument) as if it were
+	(define z (charm 3 5))
+When you call charm it returns a procedure, but
+	((charm 3) 5)
+doesn't merely invoke charm; it also invokes the procedure that charm
+returns, and *that* procedure returns a number, namely (+ x y).
+
+Scoring: one point each, all or nothing.
+
+
+8.  Mutation
+
+The procedure is supposed to return a value, as well as mutate the
+arguments!  That's important because if the first argument is null,
+then the value returned is *not* equal to that first argument, not even
+to a mutated version of it -- there's nothing to mutate in that case.
+
+(define (interleave! x y)
+  (cond ((null? x) y)
+	((null? y) x)	; This clause isn't really necessary (see below)
+	(else (set-cdr! x (interleave! y (cdr x)))
+	      x)))
+
+The test for (null? y) isn't necessary because if Y is empty the recursive
+call to interleave will have the empty list as its first argument, so *that*
+call will hit its base case, and the correct result is returned.
+
+If you didn't think of using the value returned by the recursive call, you had
+to be more careful to maintain pointers to all the pairs and not lose any.
+One way is to do the mutations in a specific (perhaps counterintuitive) order:
+
+(define (interleave! x y)
+  (cond ((null? x) y)
+	((null? y) x)	; This clause isn't really necessary
+	(else (interleave! y (cdr x))
+	      (set-cdr! x y)
+	      x)))
+
+The other way is to use a LET to remember the old CDR:
+
+(define (interleave! x y)
+  (cond ((null? x) y)
+	((null? y) x)	; This clause isn't really necessary
+	(else (let ((old-cdr (cdr x)))
+		(set-cdr! x y)
+		(interleave! y old-cdr)
+		x))))
+
+Many solutions were more complicated than this, usually because people tried
+to mutate two pointers in each recursive call instead of just one.  Learn to
+make things as simple as possible.
+
+The most common errors involved using set-car! instead of set-cdr! to try to
+rearrange elements.  Some problems can be solved either way (for example,
+interchanging the order of elements within a list, turning (a b c d e f)
+into (b a d c f e), which can be done either by using set-cdr! to rearrange
+the spine or by using set-car! to keep the spine as it was but put different
+elements into the same positions) but this one can't be; we start with two
+short lists and have to end up with one big list.  This means lengthening the
+spine, which can't be done by swapping elements around.
+
+Another category of error was misunderstanding the fact that the car of a pair
+is an element, while the cdr of a pair is a sublist.  For example, it makes
+no sense to say something like
+	(set-cdr! y (car x))	;; wrong!
+The intent is presumably "set the cdr of Y to point to X's first pair" but in
+fact this expression really says "set the cdr of Y to point to X's first
+*element*"!  The correct way to say what was meant would be
+	(set-cdr! y x)
+
+Many solutions used SET! instead of SET-CDR!, sometimes in base cases:
+	(cond ((null? x) (set! x y)) ...)	;; wrong!
+The intent was to make a change that would be seen by whoever called
+interleave!, but in fact X and Y are variables local to interleave! and not
+visible to the caller.
+
+Worst of all were solutions that call CONS, APPEND, or LIST; the problem
+says that it must be solved without allocating any new pairs.  (It's okay
+to call APPEND! (with an exclamation point), which appends its arguments
+by mutation, without allocating new pairs.)
+
+Scoring:  3 if correct
+	  2 if correct mutation but wrong value returned
+	  2 if correct unless a top-level argument is null
+	  1 if close but some pointers lost
+	  1 if setting a cdr to an element: (set-cdr! y (car x))
+	  0 if pairs allocated (calling CONS, APPEND, etc.) or incoherent
+	  0 if mutating a non-pair: (set-cdr! (car x) ...)
+
+
+9.  Serialization
+
+First of all, the correct answers for calling incr, decr, and double
+are the answers that would result if they were called in some sequential
+order.  There are six such orders:
+
+INCR then DECR then DOUBLE:  0 => 1 => 0 => 0
+INCR then DOUBLE then DECR:  0 => 1 => 2 => 1
+DECR then INCR then DOUBLE:  0 => -1 => 0 => 0
+DECR then DOUBLE then INCR:  0 => -1 => -2 => -1
+DOUBLE then INCR then DECR:  0 => 0 => 1 => 0
+DOUBLE then DECR then INCR:  0 => 0 => -1 => 0
+
+So the three correct answers are -1, 0, and 1.
+
+(a)  No deadlock is possible, because S's mutex is acquired before
+T's mutex for both INCR and DECR.  A deadlock would be possible
+if we had, for example, (S (T INCR)) but (T (S DECR)).
+
+But wrong answers are possible, because DOUBLE isn't serialized.
+For example, here is one incorrect sequence of events:
+
+	1.  DOUBLE reads the initial value of X, namely 0.
+	2.  INCR runs completely, changing X from 0 to 1.
+	3.  DOUBLE doubles 0, setting X to 0 again.
+	4.  DECR runs completely, changing X from 0 to -1.
+
+Although this is an incorrect sequence, it happens to give the
+same answer as a correct sequence.  But here's another incorrect
+sequence that gives a different answer:
+
+	1.  INCR runs completely, changing X from 0 to 1.
+	2.  DOUBLE reads that value of X, namely 1.
+	3.  DECR runs completely, changing X from 1 to 0.
+	4.  DOUBLE doubles 1, setting X to 2.
+
+A similar sequence with INCR and DECR in the other order will give
+the result -2.
+
+So the answer is that X can be -2, -1, 0, 1, or 2.
+
+(b) Since all three processes are protected by S, only the correct
+answers are possible.  Since only one of the processes uses T,
+there is no possibility of deadlock.
+
+So the answer is -1, 0, or 1.
+
+Scoring: One point each, all or nothing.
+
+
+10.  MapReduce
+
+> (ss my-pairs)
+((bar . 2) (bat . 3) (baz . 1) (big . 8) (bill . 7) (bin . 6) (bog . 0))
+
+[A]
+(mapreduce (lambda (kvp) (list (make-kv-pair (butlast (kv-key kvp))
+                                             (kv-value kvp))))
+           +
+           0
+           my-pairs)
+
+The map phase turns my-pairs into the stream
+
+((ba . 2) (ba . 3) (ba . 1) (bi . 8) (bil . 7) (bi . 6) (bo . 0))
+
+by replacing each key with its BUTLAST.
+
+Then the sort phase collects pairs with the same key, generating this
+structure:
+
+((ba . (2 3 1)) (bi . (8 6)) (bil . (7)) (bo . (0)))
+
+[It's shown here as a list, but really it's a stream, and so are the CDRs
+of the key-valuestream pairs.]
+
+The reducer is given /just the values/ for a given key as the data, so +
+adds them up successfully, and the result is the stream
+
+((ba . 6) (bi . 14) (bil . 7) (bo . 0))
+
+A common wrong answer was
+
+((ba . 6) (bi . 21) (bo . 0))
+
+thinking that "butlast" means "first two"!  We generously didn't take off for
+that, on the grounds that it was a word/sentence error rather than a mapreduce
+error.
+
+[B]
+(mapreduce (lambda (kvp) (list (make-kv-pair (butlast (kv-key kvp))
+                                             (kv-value kvp))))
+           (lambda (x y) (+ (kv-value x) (kv-value y)))
+           0
+           my-pairs)
+
+This example is the same except for the reducer, which is written as if the
+data input to the reduce phase were a stream of /key-value pairs/ instead of
+just a stream of values.  So when it's run, the arguments X and Y are
+numbers, not kv-pairs, and so the selector KV-VALUE fails, giving an ERROR.
+
+Scoring:  One point each.
+
+
+11.  Streams
+
+This seems to have been easy for most students.
+
+(a) The procedure SPEW generates an infinite stream of all the
+same value; (SPEW 3) produces (3 3 3 3 3 3 ...)
+
+So (SPEW 1) is the stream better known as ONES, and so GARPLY is
+	(cons-stream 1 (add-streams ones garply))
+which you should recognize as the recipe for the INTEGERS stream
+(1 2 3 4 5 6 7 8 9 10 ...)
+
+(b) This was a little more complicated.  Each element of the STRANGE
+stream is made using CONS, so each element is a list, not a stream!
+
+The first element of STRANGE is ().
+
+The second element is (cons (stream-ref garply 0) (stream-ref strange 0))
+which is (cons 1 '()) which is (1).
+
+The third element is (cons (stream-ref garply 1) (stream-ref strange 1))
+which is (cons 2 '(1)) which is (2 1).
+
+The fourth element is (cons (stream-ref garply 2) (stream-ref strange 2))
+which is (cons 3 '(2 1)) which is (3 2 1).
+
+This should make the pattern clear; the answer is
+	(() (1) (2 1) (3 2 1) (4 3 2 1) ...)
+
+Most of the wrong answers seemed to be solutions to different problems
+from previous exams.
+
+Scoring: One point each.
+
+
+12.  Lazy evaluator
+
+Obviously no arithmetic is done when the procedure is defined, so
+point A can't be the answer for any of them.  (Some people seemed to
+think, though, that each of A, B, and C had to be used once.)
+
+When TRUTH is invoked, at point B, thunks are made for the expressions
+(* 6 7) and (- 5 2); the parameters X and Y are bound to those thunks.
+Then the procedure body is evaluated.
+
+The first expression is (DISPLAY (+ X 1)).  We put in the DISPLAY to
+make the answer completely apparent, but actually just (+ X 1) would
+have the same effect.  Namely, in order to call the primitive +, we
+have to have actual values for the arguments.  The X thunk is
+therefore forced at this time.  So both + and * are invoked at
+point B.
+
+The second expression in the body, Y, does not call any primitives.
+Therefore, the Y thunk is not forced.  Instead, BEAUTY is bound
+to that same thunk.
+
+When we ask to print BEAUTY, at point C, the thunk is forced and
+so - is invoked at that point.
+
+So the answers are B, B, C.
+
+The most common wrong answer was C, C, C.  Some people may have been confused
+by the homework problem about forcing expressions in eval-sequence.  But even
+in the version of the lazy evaluator before making the correction in that
+exercise, the expressions in the body are *evaluated*; they just aren't
+*forced*.
+
+There are actually four different things that might happen to an expression at
+different times:
+
+	1.  It can be left alone.
+	2.  It can be evaluated.
+	3.  It can be made into a thunk.
+	4.  Its value, if a thunk, can be forced.
+
+(The fourth actually happens not to an expression but to a value, so
+it only happens after evaluation.)  In the homework problem, what went
+wrong wasn't a failure to force an expression in the procedure body
+(there's nothing to force, since the body expressions weren't thunked),
+but rather that the *argument* to the procedure, which *was* thunked,
+wasn't forced when the corresponding formal parameter was used as a
+complete expression in the body.  (Go read the exercise again.)
+
+Scoring:  One point, all or nothing.
+
+
+13.  Nondeterministic evaluator and SET!
+
+This question was about the fact that backtracking undoes the effect
+of a SET!.
+
+The first value of A for which the REQUIRE succeeds is 2.  Therefore
+B is set to (+ B A) = (+ 1 2) = 3.  So that's the first value printed.
+
+The TRY-AGAIN backtracks, which undoes the SET!, so B's original
+value 1 is restored.  Then the next success value for A is 4, so
+B is set to (+ 1 4) = 5.
+
+The expected wrong answer wouldn't undo the SET!, so that the
+second value printed would be (+ 3 4) = 7.
+
+Scoring:  One point, all or nothing.
+
+
+14.  Nondeterministic evaluator and nested AMBs
+
+The first value produced is (1 squared = 1).
+
+After that, no more values are printed.  The evaluator gets into
+an infinite loop.  The reason is that the REQUIRE keeps failing,
+but the nearest AMB (we don't actually know whether it's the one
+for A or the one for B, because LET doesn't guarantee which of A
+and B is bound first) never fails; it keeps producing larger and
+larger values, which don't get through the REQUIRE.
+
+We accepted "infinite loop" or "error" or equivalent, but not
+"no more values" -- that would be printed if all the AMBs failed.
+
+Scoring:  One point, all or nothing.
+
+
+15.  DEPTH in logic programming
+
+(assert! (rule (depth ?lst ())
+	       (not (pair ?lst))))
+
+(assert! (rule (depth (?car . ?cdr) ?dep)
+	       (and (depth ?car ?dep-car)
+		    (depth ?cdr ?dep-cdr)
+		    (max (a . ?dep-car) ?dep-cdr ?dep))))
+
+The first rule corresponds to the base case in the Scheme procedure.
+Note that zero is represented as (), not as 0!
+
+Some people buried the NOT in an unnecessary AND like this:
+	(rule (depth ?lst ())
+	      (and (same ?lst ?lst)
+		   (not (pair ?lst))))
+because you've learned that a NOT can only act as a filter on frames
+already established.  But this isn't necessary; the SAME above adds no
+new bindings.  A binding for ?LST has already been established when the
+query was unified with the conclusion of the rule.
+
+Some people wanted to use
+	(depth () ())
+as the base case instead of the above.  The trouble is that we also
+need to have a depth of zero for symbols, since the depth of a list
+is based on the depth of its car (an element) as well as on the depth
+of its cdr (a sublist).
+
+The second rule corresponds to the recursive case in the Scheme
+procedure.  (a . ?dep-car) corresponds to (+ 1 (depth (car lst)))
+because we add one to a number by consing an A onto it.
+
+A somewhat common error was to confuse ?CAR with ?DEP-CAR and/or
+?CDR with ?DEP-CDR, as in
+	(max (a . ?car) ?cdr ?dep)	;; wrong!
+
+Less common, and much worse, was to try for composition of functions:
+	(max (a . (depth ?car)) (depth ?cdr) ?dep)	;; wrong!
+
+Scoring:  3  correct (with or without ASSERT!).
+	  2  correct except for some detail.
+	  1  seriously wrong but coherent logic program.
+	  0  incoherent, composition of functions, just the base case.
+
+
+16.  Metacircular evaluator
+
+The binding of formal parameters to actual argument values happens
+when a procedure is called, not when it's defined, and it happens in
+APPLY, not in EVAL.
+
+(If MAKE-PROCEDURE checked the parameters in the lambda expression
+to make sure they're symbols, we'd have to change it to allow lists.
+But in fact MAKE-PROCEDURE just accepts whatever comes right after the
+word LAMBDA in the expression, so we don't have to change anything.)
+
+More specifically, APPLY calls EXTEND-ENVIRONMENT to do the binding.  The
+modification can be in APPLY at the point where it calls EXTEND-ENVIRONMENT,
+or in EXTEND-ENVIRONMENT itself.  Here's one solution:
+
+(define (mc-apply procedure arguments)
+  (cond ((primitive-procedure? procedure)
+         (apply-primitive-procedure procedure arguments))
+        ((compound-procedure? procedure)
+         (eval-sequence
+           (procedure-body procedure)
+           (extend-environment
+             (JUST-NAMES (procedure-parameters procedure))	       ; ###
+             (USE-DEFAULTS (PROCEDURE-PARAMETERS PROCEDURE) arguments) ; ###
+             (procedure-environment procedure))))
+        (else
+         (error
+          "Unknown procedure type -- APPLY" procedure))))
+
+(DEFINE (USE-DEFAULTS VARS VALS)	; outputs a list of all arg values
+  (DEFINE (HELPER VARS)			; whether from invocation or from
+    (COND ((NULL? VARS) '())		; formal parameter default values.
+	  ((PAIR? (CAR VARS))		; Extend-environment still catches
+	   (CONS (CADAR VARS) (HELPER (CDR VARS))))	; mismatches.
+	  (ELSE '())))
+  (COND ((NULL? VARS) VALS)
+	((NULL? VALS) (HELPER VARS))
+	(ELSE (CONS (CAR VALS) (USE-DEFAULTS (CDR VARS) (CDR VALS))))))
+
+(DEFINE (JUST-NAMES VARS)		; outputs a list of formal parameter
+  (MAP (LAMBDA (VAR)			; names only, without default values.
+	 (IF (PAIR? VAR)
+	     (CAR VAR)
+	     VAR))
+       VARS))
+
+Using helpers in APPLY to provide modified versions of VARS and VALS gives a
+solution with minimal change to existing code.  But of course the same result
+can be obtained with somewhat different changes elsewhere, as long as the
+result is finally to get all the parameters bound to the right values in the
+new environment.
+
+There's really no other good way to handle this.  For example, you could try
+to do it in EVAL during the processing of a procedure call, by modifying the
+behavior of LIST-OF-VALUES to include default values when appropriate.  But
+remember that in EVAL we don't yet even know whether this procedure is
+primitive or defined!  So EVAL would have to duplicate a lot of the work of
+APPLY to make this work correctly.  In fact, though, most people who tried to
+modify LIST-OF-VALUES did so in a way that confused the actual arguments (the
+things that are available in EXPS) with the formal parameters, which are part
+of the procedure and not available in LIST-OF-VALUES at all.  So for example
+people said things like
+	(if (pair? (car exps))		;; wrong!!
+	    (cons (cadr (car exps))
+		  (list-of-values (cdr exps))))
+But it's (procedure-parameters procedure), not exps, that contains the
+default values in the CADRs of its elements.  (Because of that confusion
+we gave one point to most such solutions.)
+
+Another clever but wrong approach is to handle most of the work when
+procedures are created (when a LAMBDA expression is evaluated, in other words)
+by generating a new environment frame in which those parameters with default
+values are bound to their default values, using that frame to extend the
+current (defining) environment, and storing the extended environment in the
+procedure.  Then, when the procedure is called, a new frame is made binding
+only those parameters for which non-default values are given in the procedure
+call expression.  Since that new frame extends the one stored in the
+procedure, the procedure body will be evaluated in an environment that
+includes the default-valued arguments.  This approach is basically the same as
+the STATIC feature in the Logo interpreter project.  It works as long as the
+procedure doesn't try to SET! one of its arguments for which a default value
+was given.  If that happens, the correct solution will still use the original
+default value the next time the procedure is called.  But this solution
+modifies the remembered default value of that argument, so the next time the
+procedure is called, the wrong default value is used.  (In other words, the
+semantics of default arguments doesn't exactly match the semantics of STATIC
+in the Logo project.)  This was generally a 2-point solution.
+
+Among basically correct solutions, there were a number of minor errors.
+One common error was to extract the actual parameter name from a parameter
+in list form only if the default values are used; this happened when people
+modified EXTEND-ENVIRONMENT but changing only the call to ERROR when there
+are more parameters than arguments.
+
+By the way, many people made unnecessary tests, in their equivalent of
+USE-DEFAULTS above, to see whether or not the number of arguments is the same
+as the number of parameters by calling LENGTH on both.  It's much cleaner to
+write USE-DEFAULTS in a way that works in all cases.
+
+
+Scoring:  4 if correct.
+	  3 if minor errors.
+	  2 for a basically good try with a serious semantic error.
+	  1 for a solution showing some insight but also confusion.
+	  0 for a solution showing little insight into the evaluator or
+	     in which the confusion outweighed the insight.
+

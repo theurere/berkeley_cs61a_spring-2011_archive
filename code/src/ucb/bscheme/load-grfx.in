@@ -1,0 +1,3 @@
+;;load-grfx (for CS9D and CS47B)
+(load "@INSTALLPATH@/obj.scm")
+(load "@INSTALLPATH@/turtle-grfx.scm")

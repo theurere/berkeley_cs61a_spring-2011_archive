@@ -1,0 +1,526 @@
+CS 61A		Solutions to sample midterm 3 #1
+
+1.  Box and pointer.
+
+(let ((x (list 1 2 3)))
+   (set-car! x (list 'a 'b 'c))
+   (set-car! (cdar x) 'd)
+   x)
+
+((a d c) 2 3) is printed.
+
+X-->[o|o]-->[o|o]-->[o|/]
+     |       |       |      
+     |       V       V
+     |       2       3      
+     V      
+    (o|o)-->{o|o}-->[o|/]
+     |       |       |      
+     V       V       V      
+     a       d       c 
+
+The result of the first set-car! is ((a b c) 2 3); the second set-car! changes
+the B to D.  (car x) is the pair in (parentheses) in the diagram above, so
+(cdar x) is the pair in {braces}.
+
+
+(define x 3)
+(define m (list x 4 5))
+(set! x 6)
+m
+
+(3 4 5) is printed.
+
+M-->[o|o]-->[o|o]-->[o|/]
+     |       |       |      
+     V       V       V      
+     3       4       5
+
+The point of this example is that once (list x 4 5) has been evaluated, it
+doesn't matter that the 3 came from X; the list contains the values, not the
+expressions that produced the values.  So the list M doesn't "know" that X's
+value is later changed.
+
+
+
+(define x (list 1 '(2 3) 4))
+(define y (cdr x))
+(set-car! y 5)
+x
+
+(1 5 4) is printed.
+
+              Y
+              |
+              |
+              V
+X-->[o|o]-->[o|o]-->[o|/]
+     |       |       |      
+     V       V       V      
+     1       5       4
+
+In this example, Y names the same pair as (cdr x).  So changing the car of Y
+changes the cadr of X, replacing (2 3) with 5.
+
+
+
+(let ((x (list 1 2 3)))
+  (set-cdr! (cdr x) x)
+  x)
+
+(1 2 1 2 1 2 1 2 ...    is printed.
+
+     +---------+
+     |         |
+     V         |
+X-->[o|o]-->[o|o]
+     |       |      
+     V       V      
+     1       2
+
+This example creates a circular list.
+
+
+Scoring: One point per printed representation; one point per diagram.
+
+
+
+2.  Local state.
+
+If we call PREV several times, each of the resulting procedures remembers
+its own previous invocation.  In OOP terminology, PREV represents a class, and
+SLOW-SQUARE is an instance of the class.  So OLD-RESULT should be an instance
+variable.
+
+Of the four choices offered, the first is the one in which OLD-RESULT is an
+instance variable, because the LET happens once per call to PREV, i.e., once
+for each instantiation of the class.
+
+In the second choice, the LET happens only once, when PREV is defined, so
+OLD-RESULT would be a class variable.  In the third choice, the LET happens
+every time an *instance* (such as SLOW-SQUARE) is called, so it's not a state
+variable at all, and SLOW-SQUARE would always return #F.
+
+In the fourth choice, PREV doesn't take an argument!  So that can't be right,
+and you don't even have to look at the LET.
+
+Scoring: 4 points, all or nothing.
+
+
+3.  Environment diagram.
+
+There are four frames (including the global one) and three procedures
+in the diagram.
+
+In the global frame, X is bound to 4, BAZ is bound to procedure P1,
+and FOO is bound to procedure P3.
+
+Frame E1 extends the global environment.  In it, X is bound to 30
+and * is bound to procedure P2.
+
+Frame E2 extends E1.  In it, Y is bound to 8.
+
+Frame E3 extends E1.  In it, A is bound to 30, and B is bound to 8.
+
+Procedure P1 is created in the global environment with parameter X
+and body (define ...) (lambda ...)
+
+Procedure P2 is created in E1 with parameters A and B, and body (+ a b).
+
+Procedure P3 is created in E1 with paremeter Y and body (* x y).
+
+---------
+
+The first expression just adds the X binding to the global environment.
+
+The second expression creates P1 and binds BAZ to it in the global
+environment.
+
+The third expression invokes BAZ, so it creates E1 with X bound to 30.
+[A common error was to bind X to 13, thinking that * means addition
+in the expression (* 3 10).  But procedure P2 hasn't even been created
+yet when (* 3 10) is evaluated, let alone the fact that this expression
+is evaluated in the global environment because it was typed at a Scheme
+prompt.]  Then it evaluates the body of BAZ in environment E1.  This
+creates P2, binds * to it in E1, creates P3, and returns P3 as the
+value from BAZ.  Then FOO is bound to that value, P3, in the global
+environment.
+
+The fourth expression computes (* 2 x) in the global environment,
+getting 8, and creates E2 with Y bound to 8.  [A common mistake was
+to use the value 30, in E1, for X and also use P2 for *, thereby
+computing the value 32 for Y.]  Then, with E2 as the
+current environment, it evaluates the body of FOO, which is (* x y).
+Since E2 is the current environment, and it extends E1, the symbol *
+represents procedure P2 in this expression.  Since this is a
+user-defined procedure, not a primitive, this creates E3 with A
+bound to 30 (the value of X found in E1) and B bound to 8 (the value
+of Y found in E2). Then (+ a b) is evaluated in E3, returning the
+value 38, which is the value of the entire expression.
+
+---------
+
+Scoring of common mistakes:
+
+  3  correct
+
+  2  correct return value 38, but...
+      E3 extends E2
+      E3 variables are named X and Y instead of A and B
+      E3 binds A to "X" instead of 30 and B to "Y"
+      E3 left out altogether
+      P3 right bubble points to E2
+
+  1  X=13 in E1
+     Y=32 in E2
+     E2 extends global environment
+     In E1, "(* a b)" is bound to "(+ x y)"
+     The third expression is interpreted as if it were
+	(define (foo) (baz (* 3 10)))
+      thereby making FOO a procedure of no arguments that calls BAZ
+
+  0  P3's right bubble points to the global frame
+     E1 extends E2 (very strange sequence of events!)
+     Y=30, as if it were
+        (define (baz y) (* x y))
+     extra/missing frames or procedures except as noted earlier
+     several errors
+
+
+4.  List mutation.
+
+The easiest way to do a problem like this is to use a LET in which
+you give names to every relevant piece of the list structure.  Then,
+inside the LET, you can mutate the pairs in any old order without
+risk of error:
+
+(define (make-alist! lst)
+  (if (null? lst)
+      'done
+      (let ((car1 (car lst))
+	    (cdr1 (cdr lst))
+	    (car2 (cadr lst))
+	    (cdr2 (cddr lst)))
+	(set-car! lst cdr1)
+	(set-cdr! lst cdr2)
+	(set-car! cdr1 car1)
+	(set-cdr! cdr1 car2)
+	(make-alist! cdr2)))
+  lst)
+
+But that's more work than is really needed.  If you're clever about
+the order in which you do the mutation, you can get by with only one
+temporary variable.  There are several such solutions; here's one:
+
+(define (make-alist! lst)
+  (if (null? lst)
+      'done
+      (let ((tmp (cddr lst)))
+	(set-cdr! (cdr lst) (cadr lst))
+	(set-car! (cdr lst) (car lst))
+	(set-car! lst (cdr lst))
+	(set-cdr! lst tmp)
+	(make-alist! tmp)))
+  lst)
+
+Both of these solutions use the original first pair as the top-left pair
+of the resulting association list; the original second pair becomes the
+bottom-left pair.  Several people noticed that you can rearrange the
+pairs with no temporary variables at all if you reverse those roles,
+so that what used to be the second pair becomes the head of the new
+association list.  Unfortunately, this isn't quite a correct solution,
+because the caller of MAKE-ALIST! probably has some variable that still
+has the original first pair as its value, so the caller will think that
+that first pair is the new a-list.
+
+Neither of these solutions uses the value returned by recursive calls.
+It's also possible to write a solution that does:
+
+(define (make-alist! lst)
+  (if (null? lst)
+      'done
+      (let ((tmp (make-alist! (cddr lst))))
+	(set-cdr! (cdr lst) (cadr lst))
+	(set-car! (cdr lst) (car lst))
+	(set-car! lst (cdr lst))
+	(set-cdr! lst tmp)))
+  lst)
+
+Note that you must check (NULL? LST) *before* you try to take its
+CAR or CDR.
+
+Scoring of typical solutions:
+
+4  OK
+3  Bad/missing base case;
+   rearranges by mutation but the order isn't quite right;
+   leaves second pair on top;
+   uses return value from recursive call but doesn't return a value.
+2  No temporary variable (via LET or helper procedure).
+1  Uses CONS (or LIST or APPEND, etc).
+0  (set! (car lst) ...) or similar confusions.
+
+Solutions using CONS scored lower than other errors because the problem
+explicitly said not to allocate new pairs.  It's important that you 
+understand the difference between allocating a pair and making a new
+pointer to an already-existing pair.  Although it's true that the old
+pairs would be reclaimed, so the total storage requirement of the program
+wouldn't increase with solutions using CONS, sometimes it's important not
+to allow a delay for garbage collection.  For example, if your program is
+creating video animation in real time, a garbage collection might bring
+the animation to a halt for a substantial time, perhaps half a second.
+
+
+5.  Vectors.
+
+To solve this problem it's important to understand what it's about.  The
+result (histogram) vector is separate from the argument (scores) vector; the
+two vectors have different sizes; there is no simple correspondence between
+one element of the result and one element of the argument.  Each element of
+the result depends on examining *every* element of the argument.  The kind of
+higher order function strategy that we often use for lists is not appropriate
+in this problem.
+
+Having passed that hurdle, there is an insight about algorithms that helps
+to simplify the solution if you see it:  Although each element of the result
+depends on every element of the argument, each element of the *argument*
+contributes to *only one* element of the result.  Therefore, a solution that
+works by iterating through the elements of the argument can run in Theta(N)
+time, whereas a solution that iterates through the elements of the result
+will require Theta(N^2) time, and more complicated code.
+
+Here is the Theta(N) solution:
+
+(define (histogram scores)
+  (define (help result i)
+    (if (< i 0)
+	result
+	(begin (vector-set! result
+			    (vector-ref scores i)
+			    (+ (vector-ref result (vector-ref scores i)) 1))
+	       (help result (- i 1)))))
+  (help (make-vector (+ (vector-max scores) 1) 0)
+	(- (vector-length scores) 1)))
+
+It's important that the call to MAKE-VECTOR initializes every element of the
+histogram vector to zero, because we're going to be adding to those values in
+the HELP loop.
+
+You might find it easier to read this slight variant:
+
+(define (histogram scores)
+  (define (help result i)
+    (if (< i 0)
+	result
+	(let ((score (vector-ref scores i)))
+	  (vector-set! result
+		       score
+		       (+ (vector-ref result score) 1))
+	  (help result (- i 1)))))
+  (help (make-vector (+ (vector-max scores) 1) 0)
+	(- (vector-length scores) 1)))
+
+Here's the Theta(N^2) version:
+
+(define (histogram scores)
+  (define (count-score score total j)
+    (cond ((< j 0) total)
+	  ((= (vector-ref scores j) score)
+	   (count-score score (+ total 1) (- j 1)))
+	  (else
+	   (count-score score total (- j 1)))))
+  (define (help result i)
+    (if (< i 0)
+	result
+	(begin (vector-set! result
+			    i
+			    (count-score i 0 (- (vector-length scores) 1)))
+	       (help result (- i 1)))))
+  (help (make-vector (+ (vector-max scores) 1))
+	(vector-max scores)))
+
+And, yes, instead of writing COUNT-SCORE as above, you could use
+(VECTOR-LENGTH (VECTOR-FILTER ...)) to find the count of students with a
+given score.  But that would be pretty inefficient (although only by a
+constant factor), because VECTOR-FILTER examines every element of the
+argument vector twice, and creates a new vector, which you use only long
+enough to count its elements, then throw it away.  VECTOR-FILTER makes a good
+homework problem, but it's not something you would ever really want to use in
+vector-based programming.
+
+It's possible to use the Theta(N^2) algorithm with only one helper procedure,
+instead of two, by having the helper take two index arguments, one for each
+vector.  But it's really, really hard to get that right, and even if you do,
+it's really, really hard for anyone else (or you, next week) to read the
+resulting program.
+
+
+The first index in a vector is 0; the last is (- (vector-length vec) 1).
+Many people lost a point by trying
+	(vector-ref vec (vector-length vec))
+
+People found many ways to make the problem more complicated than necessary,
+such as using
+	(define (helper i)
+	  ...
+	  (set! i (+ i 1))
+	  (helper i)...)
+instead of
+	(define (helper i)
+	  ...
+	  (helper (+ i 1))...)
+This isn't incorrect, but at this late stage in the semester it shows an iffy
+understanding of recursion.
+
+The only two places you can use DEFINE are at the Scheme prompt or at the
+beginning of a procedure body.  You can't, for example, say
+	(cond (some-test
+	       (define ...)
+	       ...)
+	 ...)
+
+
+Scoring:
+
+7  correct.
+
+6  off-by-one error in calculating vector length or end test.
+
+5  in Theta(N) algorithm, doesn't initialize result elements to zero.
+5  computes vector correctly but doesn't return it.
+5  right logic, but a Scheme language error (e.g., misplaced DEFINE).
+
+4  (VECTOR-REF RESULT INDEX) instead of
+   (VECTOR-REF RESULT (VECTOR-REF SCORES INDEX)).
+
+2  No allocation of new vector (result overwrites argument).
+
+0  Uses lists, or takes car/cdr of a vector.
+
+There were other, less common errors; generally "has the idea" got 5, while
+"has an idea" got 2.
+
+
+6.  Parallelism in real life.
+
+For this question we got several essays trying to justify solutions other
+than the obvious ones.  For the most part we didn't accept these -- the
+problem did say "the answer which BEST describes..." -- with one exception
+noted in part (b) below.
+
+(a) People at tables can't get food; people waiting for food can't get
+tables.  This is a potential deadlock, and that was the answer we wanted.
+It's true that the deadlock might not happen, because some people at
+tables may actually have food and might eventually leave, letting the line
+continue moving.  It depends partly on whether the restaurant servers
+believe you when you say "it's okay to serve me because my friend is already
+sitting at a table and saving me a seat."  Even if they do, a deadlock can
+happen if someone comes in alone (so doesn't have a friend to grab a table)
+and when that person gets to the front of the line, all the tables are filled
+with friends of people behind him/her in line.
+
+You may think "it's UNFAIR for people who don't have food yet to hog the
+tables" or "it's INEFFICIENT for people to sit at tables when they don't
+have food yet."  But these are technical terms about parallellism errors,
+and the particular situation described in the problem is technically a
+deadlock.
+
+(b) There are several inspectors serving several lines in parallel, but
+there's only one metal detector, which acts as a single serializer for
+all the inspectors.  This is inefficiency (too much serialization).
+
+Some people argued that the metal detector is best viewed as an actual
+resource, not as a serializer, and so this is correct, if unfortunate,
+serialization of a shared resource.  We accepted that reasoning, so we
+also accepted "none of the above" as a correct answer.
+
+(c) You write while your friend researches.  This is correct parallelism,
+with two processors carrying out parallelizable tasks.
+
+Some people argued that the tasks *aren't* correctly parallellizable
+because the research has to come before the writing.  That idea has some
+merit for a short paper, but you wouldn't be writing a short paper as a
+team anyway; it'd be an individual assignment.  We meant that you were
+writing one part of the paper while your friend was researching a different
+part of the paper.
+
+Some people said "unfairness" because you have to do the boring writing
+while your friend is off doing the interesting research.  One of the
+nice things about working in groups is that sometimes you're lucky and
+your interests complement those of your friend!  But even if you would
+feel an unfairness in this arrangement, it's not unfair in the technical
+sense -- a parallelism unfairness would be if the librarians always get
+books for your friend before they get books for you.
+
+Scoring: One point each.
+
+
+7.  Streams.
+
+The easiest solution is in two steps:  First we make a stream of all possible
+strings of {\tt OVER} and {\tt UNDER}, and then we filter out the ones that
+don't satisfy the condition of having at least one of each:
+
+(define foo
+  (cons-stream '()
+               (interleave (stream-map (lambda (p) (cons 'over p)) foo)
+                           (stream-map (lambda (p) (cons 'under p)) foo))))
+
+(define patterns
+  (stream-filter (lambda (p) (and (member 'over p) (member 'under p)))
+                 foo))
+
+You can't combine these two steps; several people tried this:
+
+(define patterns     ;;; wrong!
+  (stream-filter (lambda ...)
+                 (cons-stream '() (interleave (stream-map ... patterns)
+                                              (stream-map ... patterns)))))
+
+The trouble is that this process will never get started, because the two calls
+to stream-map can only operate on patterns that have previously been
+generated, and there won't be any of those until something makes it through
+the filter.  As a result, the variable PATTERNS hasn't been defined when the
+calls to stream-map try to use it.
+
+Another wrong solution was to try to avoid the need for filtering by "priming
+the pump" with initial patterns other than the empty one, like this:
+
+(define patterns         ;;; wrong!
+  (cons-stream '(over under)
+     (cons-stream '(under over)
+        (interleave ...))))
+
+This indeed gets started correctly, and generates only legal patterns,
+but it doesn't generate all of them.  In particular, it won't generate
+the example shown in the problem:
+
+    (over over under over under under)
+
+because this pattern, although legal, doesn't end with OVER UNDER or
+UNDER OVER.
+
+Some people, recognizing the problem with that last solution, tried to
+get around it by adding words both front and back.  That might possibly
+work, but the people who tried it wanted to add words at the end with
+             (cons p 'over)
+which of course doesn't make a valid list.
+
+Another intriguing method involved the use of random numbers to make
+a randomly chosen pattern for each element of the stream.  It can be
+argued that if the random number generator has perfectly well-distributed
+results, this approach will eventually generate any desired pattern.
+(And, since the number of already-generated patterns is finite, and
+the number of not-yet-generated patterns is infinite, the probability
+of duplication of patterns is zero!  Alas, this doesn't mean it can't
+happen.  :-)  But we didn't accept these solutions because part of the
+idea in an infinte stream is that you have to be able to guarantee that
+any particular element is reachable in bounded time.
+
+
+Scoring:  We graded this one very leniently:
+
+3  correct
+2  interleave correct, filtering missing or incorrect
+1  interleave wrong, but a good try
+0  not close

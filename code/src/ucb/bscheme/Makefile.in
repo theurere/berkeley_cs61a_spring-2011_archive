@@ -1,0 +1,77 @@
+PREFIX		= @prefix@
+LIBDIR		= ${PREFIX}/lib/stk
+BINDIR		= ${PREFIX}/bin
+SITESCHEMEDIR	= ${LIBDIR}/site-scheme
+VERSION		= `${BINDIR}/stk -version`
+
+INSTALL		= @INSTALL@
+INSTALL_DATA	= @INSTALL_DATA@
+INSTALL_PROGRAM 	= @INSTALL_PROGRAM@
+INSTALL_SCRIPT	= @INSTALL_SCRIPT@
+
+SRCS =	berkeley.scm \
+	simply.scm \
+	explorin.scm \
+	modeler.stk \
+	turtle-grfx.scm \
+	obj.scm \
+	which-modeler.scm \
+	load-explorin \
+	load-simply \
+	load-grfx
+
+BINS =	stk-explorin \
+	stk-simply \
+	stk-grfx
+
+all: $(SRCS) $(BINS)
+
+install: $(SRCS) $(BINS)
+	@for i in ${SRCS}; do \
+		echo "Installing $$i"; \
+		${INSTALL_DATA} $$i ${SITESCHEMEDIR}; \
+	done;
+
+	@for i in ${BINS}; do \
+		echo "Installing $$i"; \
+		${INSTALL_PROGRAM} $$i ${BINDIR}; \
+	done;
+
+	@echo "Installing userinit.stk"
+	@${INSTALL_DATA} userinit.stk ${LIBDIR}/${VERSION}/STk
+
+load-explorin: load-explorin.in
+	@echo "Creating $@"
+	@sed -e 's,[@]INSTALLPATH[@],$(SITESCHEMEDIR),' $< > $@
+
+load-simply: load-simply.in
+	@echo "Creating $@"
+	@sed -e 's,[@]INSTALLPATH[@],$(SITESCHEMEDIR),' $< > $@
+
+load-grfx: load-grfx.in
+	@echo "Creating $@"
+	@sed -e 's,[@]INSTALLPATH[@],$(SITESCHEMEDIR),' $< > $@
+
+stk-explorin:
+	@echo "Creating $@"
+	@echo "#!/bin/sh\nPATH=${BINDIR}:\$$PATH\n\nexec stk -load load-explorin \"\$$@\"" \
+	> stk-explorin
+	@chmod 755 stk-explorin
+
+stk-simply:
+	@echo "Creating $@"
+	@echo "#!/bin/sh\nPATH=${BINDIR}:\$$PATH\n\nexec stk -load load-simply \"\$$@\"" \
+	> stk-simply
+	@chmod 755 stk-simply
+
+stk-grfx:
+	@echo "Creating $@"
+	@echo "#!/bin/sh\nPATH=${BINDIR}:\$$PATH\n\nexec stk -load load-grfx \"\$$@\"" \
+	> stk-grfx
+	@chmod 755 stk-grfx
+
+clean:
+	rm -rf load-explorin load-simply load-grfx stk-explorin stk-simply stk-grfx
+
+distclean: clean
+	rm -rf Makefile *~

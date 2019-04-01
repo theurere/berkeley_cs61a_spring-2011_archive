@@ -1,0 +1,540 @@
+CS 61A		Solutions to sample final exam #2
+
+1.  HOFs in 21 project
+
+A higher order procedure is one that uses procedures as data -- either as
+arguments or as its return value.  Many people forgot about the latter.
+
+BEST-TOTAL takes a hand (a sentence) as argument and returns a number.
+No procedures; not higher order.
+
+STOP-AT-17 takes a hand (a sentence) and a card (a word) as arguments,
+returning #T or #F.  No procedures; not higher order.
+
+PLAY-N takes a strategy (which is a procedure!) and a number as arguments,
+returning a score.  It's higher order.
+
+STOP-AT takes a number as argument, returning a strategy -- a procedure.
+So it's higher order.
+
+MAJORITY takes three strategies as arguments and returns a strategy.
+Clearly higher order!
+
+
+Scoring: 2 points if correct; 1 point if all but one correct (usually
+leaving out STOP-AT).
+
+
+2.  Foo and baz.
+
+(foo 3) ==> (if 3 (foo #f) 5)
+        ==> (foo #f)
+        ==> (if #f (foo #f) 5)
+        ==> 5
+
+(baz 3) ==> (and 3 (baz #f) 5)
+        ==> (and (baz #f) 5)       ; since 3 is true
+        ==> (and (and #f (baz #f) 5) 5)
+        ==> (and #f 5)             ; inner AND is false
+        ==> #f
+
+Scoring: 1 point each.
+
+
+3.  Iterative and recursive.
+
+FOO is iterative; BAZ is recursive.
+
+In FOO, when IF decides to evaluate (foo #f), it already knows that whatever
+the answer from (foo #f) is will be the answer to the entire problem.
+
+In BAZ, after the (baz #f) returns, AND must check whether the answer is
+true or false.  If false (as, in fact, it is), then indeed the answer to
+(baz #f) is also the answer to (baz 3).  But AND didn't know that until the
+recursive call is complete!  If (baz #f) had been true, the answer would
+have been 5.
+
+A good one-sentence answer:  "An iterative process is one in which
+the caller has no more work to do once the recursive callee returns."
+
+Many people quoted sentences from the book, often the one about "deferred
+operations"; we accepted these if it sounded as if you might have some idea
+what it actually meant.
+
+Some people quoted a sentence about how something "depends on the return
+value" but mostly these answers were wrong: the answer to the overall
+problem does depend, in both cases, on the answer to the recursive call.
+The question is whether it also depends on anything else!
+
+Worst of all was "FOO is iterative because IF is a special form."
+Sorry -- AND is a special form, too!
+
+Scoring: 2 points if you had FOO iterative and BAZ recursive, with a
+convincing sentence.  1 point if you had FOO iterative and BAZ recursive.
+(If you had FOO recursive and/or BAZ iterative, we didn't even read your
+sentence.)
+
+
+4.  How are the pairs connected?
+
+We know that A's box and pointer diagram looks like this:
+
+A --> [1 . -]---> [2 . -]---> [ | . -]---> [6 . /]
+                                |
+                                V
+                               [3 . -]---> [4 . -]---> [5 . /]
+
+We also know that (CDDR B) is the same pair as (CADDR A), which is the pair
+whose car is 3.  Therefore the list (3 4 5) is shared between A and B, so
+the diagram is
+
+A --> [1 . -]---> [2 . -]---> [ | . -]---> [6 . /]
+                                |
+                                V
+ B --> [1 . -]---> [2 . -]---> [3 . -]---> [4 . -]---> [5 . /]
+
+We also know that (CADDR C) is *not* the same pair as (CADDR A), so the list
+C must have its own distinct pair with 3 in the car.  On the other hand,
+(CDADDR C) *is* the same as (CDDDR B), so the pairs with 4 and 5 in the cars
+are shared between C and the other lists:
+
+A --> [1 . -]---> [2 . -]---> [ | . -]---> [6 . /]
+                                |
+                                V
+ B --> [1 . -]---> [2 . -]---> [3 . -]---> [4 . -]---> [5 . /]
+                                          ^
+                                         /
+                               [3 . -]--/
+                                ^
+                                |
+C --> [1 . -]---> [2 . -]---> [ | . -]---> [6 . /]
+
+(Actually, we don't know whether or not A and C share the pair whose car is
+6.  But this will turn out not to affect the solution.)
+
+Now we make two changes to the box and pointer diagram, changing one of the
+threes to a seven, and changing the four to an eight:
+
+A --> [1 . -]---> [2 . -]---> [ | . -]---> [6 . /]
+                                |
+                                V
+ B --> [1 . -]---> [2 . -]---> [7 . -]---> [8 . -]---> [5 . /]
+                                          ^
+                                         /
+                               [3 . -]--/
+                                ^
+                                |
+C --> [1 . -]---> [2 . -]---> [ | . -]---> [6 . /]
+
+We can read the results directly from the diagram:
+
+B is (1 2 7 8 5)
+C is (1 2 (3 8 5) 6)
+
+Scoring: 1 point each.
+
+
+5.  OOP to normal Scheme
+
+(define (make-echo saved)
+  (let ((count 0))
+    (lambda (message)
+      (cond ((eq? message 'count) count)
+	    ((eq? message 'saved) saved)
+	    (else (set! count (+ count 1))
+		  (let ((result saved))
+		    (set! saved message)
+		    result))))))
+
+The code for the ELSE clause is exactly the code for the default-method
+in the OOP class definition!  We didn't understand why so many people
+invented much more complicated ways to do it -- or, worse, incorrect ways.
+
+Scoring:
+3  correct
+2  has the idea (at least a dispatch procedure inside the let)
+1  has an idea
+0  other
+
+Most people did okay on this, but a fairly frequent one-point answer had the
+LET (for COUNT) inside the LAMBDA instead of outside.  This means you missed
+the whole idea about local state variables.
+
+A noteworthy zero-point solution tried to avoid the problem that the inner
+LET solves this way:
+
+           (else (set! count (+ count 1))
+                 (display saved)               ; wrong wrong wrong!
+		 (set! saved message))
+
+By now everyone should understand that procedures return values, and that
+printing isn't the same as returning, because it doesn't allow for
+composition of functions, the most important programming technique you will
+ever learn.
+
+
+6.  mystery stream
+
+The stream is made by sticking a 1 in front of an interleave of the integers
+with something:
+
+1   1 ___ 2 ___ 3 ___ 4 ___ 5 ___ 6 ___ 7 ___ 8 ___ 9 ___ 10
+
+Then you just fill in the blanks with the elements of MYSTERY, including all
+of them -- the initial 1, the integers, and the underlined ones:
+
+1   1 _1_ 2 _1_ 3 _1_ 4 _2_ 5 _1_ 6 _3_ 7 _1_ 8 _4_ 9 _2_ 10
+
+
+Scoring: 3 points for the above solution.  2 points for small errors (such
+as one number missing); there weren't many of those.  1 point for the
+following wrong sequence:
+
+        1 1 1 2 1 3 2 4 1 5 3 6 2 7 4 8 1 9 5 10
+
+which is reached by forgetting about the initial 1 and trying to create
+(interleave mystery integers) instead, making the initial 1 part of the
+interleaved values.
+
+
+7.  Infix in metacircular evaluator.
+
+This was an interesting question because the most aesthetically pleasing
+solution isn't the easiest solution.
+
+This problem asks you to change the notation of expressions, not their
+meaning.  EVAL is about expressions; APPLY is about what it means to call a
+function.  So the right place for this change is in EVAL, changing the COND
+clause for procedure calls to this:
+
+      ((application? exp)
+       (let ((left (eval (operator exp) env)))
+	 (if (or (compound-procedure? left)
+		 (primitive-procedure? left))
+	     (apply left (list-of-values (operands exp) env))
+	     (if (= (length exp) 3)
+		 (apply (eval (cadr exp) env)
+			(list left (eval (caddr exp) env)))
+		 (error "Applying non-procedure" left)))))
+
+It's important to do the evaluating of subexpressions exactly right:  only
+once each (just in case the expression involves side effects), but before
+testing for procedureness (because it's the value that's a procedure -- or a
+number, if you're testing for numbers -- not the expression).  That's why I
+had to use a LET to save the result of evaluating the first subexpression.
+
+This is an important point, missed by many students.  The example in the
+exam was just (2 + 3), but it should also work to say (x + 3), or
+((2 * 5) + 3), and in those cases the first subexpression is not itself
+a number.  The *value* of the expression is a number.  Similarly, if you're
+looking at the second subexpression, the problem could be
+        (2 (car (list + - *)) 3)
+in which the second subexpression has an arithmetic operator as its value.
+
+All of that is avoided if you make the change in APPLY, where you take apart
+the arguments you're given and rearrange them if needed.  But it's not an
+aesthetically pleasing solution, partly because applying a procedure to
+arguments is a semantic operation that shouldn't know anything about the
+shape of the expression the user typed, and partly because it means
+disassembling an argument called "arguments" to look for a procedure in it,
+and using the argument called "procedure" as an argument.
+
+Another solution would be to have an intermediate step between EVAL and APPLY,
+like this:
+
+(define (eval exp env)
+  (cond ...
+	((application? exp) (check-infix (list-of-values exp env)))
+	...))
+
+(define (check-infix values)
+  (if (and (not (meta-procedure? (car values)))
+	   (= (length values) 3)
+	   (meta-procedure? (cadr values)))
+      (apply (cadr values) (cons (car values) (cddr values)))
+      (apply (car values) (cdr values))))
+
+(define (meta-procedure? thing)
+  (or (primitive-procedure? thing)
+      (compound-procedure? thing)))
+
+Some solutions treated the problem as one of syntactic rewriting, like
+changing a COND to an IF or vice versa.  This can work, except for the fact
+that you have to partly evaluate the expression in order to know whether or
+not to do the rewriting, and then you'll end up evaluating something twice.
+
+Another solution, very clever and elegant in its intent, has the same
+problem of double evaluation: rewriting the OPERATOR and OPERANDS selectors,
+similar in spirit to the way the selectors for a DEFINE expression recognize
+the implicit-lambda special case.  But in the DEFINE situation, we can tell
+just from the notation -- the syntax -- whether or not an implicit lambda is
+involved.  In the case of infix arithmetic we're not sure until we've
+evaluated some subexpressions.
+
+Other solutions reordered the expression by mutation.  We didn't take off
+for that if it was otherwise correct, but you should try not to develop the
+habit of mutating data structures that you get as arguments unless that's
+specifically in the "contract" with the caller of your procedure.  That same
+data structure might be shared with some other purpose.
+
+The intent of the problem was that *any* two-argument procedure should be
+usable in infix notation.  The problem statement says "[i]f a compound
+expression has three subexpressions, of which the second is a procedure but
+the first isn't..."  But since the problem statement did also mention "infix
+arithmetic," we accepted solutions that work only for the specific operator
+symbols +, -, *, and so on.  However, such solutions aren't very Schemely,
+since the binding of those symbols to arithmetic functions isn't guaranteed.
+A Scheme program could say
+
+        (let ((plus +) (+ word)) ...)
+
+and then the value of (+ 3 4) would be 34!
+
+Note how my solution checks for a procedure.  Strictly speaking, you can't
+use PROCEDURE? to check, because that's a Scheme primitive that checks for
+whether something is a procedure in the underlying Scheme, not a procedure
+in the metacircular Scheme.  But we didn't take off for this subtle error.
+
+
+Scoring:
+
+4  correct
+
+3  subexpression(s) evaluated twice
+   failure to check that the first subexpression isn't a procedure
+	[consider the case (map - '(4 5 6)) which isn't infix!]
+
+2  testing unevaluated subexpressions for being procedures or numbers
+
+1  no evaluation at all
+   infix works but prefix doesn't
+
+0  references to line-obj or other such Logo interpreter structures
+
+Of course not every error is listed above, but these are the common ones.
+
+
+8.  Logic programming
+
+(a) Less
+
+The solution we were expecting was this:
+
+(rule (less () (a . ?y)))           ; 0 < anything positive
+
+(rule (less (a . ?x) (a . ?y))      ; if x < y then x+1 < y+1
+      (less ?x ?y))
+
+Several variants were also okay.  The first rule above could be replaced by
+
+(rule (less () ?x)
+      (not (same ?x ())))
+
+but not just by
+
+(rule (less () ?x))       ; wrong!
+
+because that would allow the case 0 < 0, and not by
+
+(rule (less () (?x)))     ; wrong!
+
+because that only allows for 0 < 1, not for other larger numbers.  But
+having a 0 < 1 rule is okay if you also include a rule
+
+(rule (less ?x (a . ?y))            ; if x < y then x < y+1
+      (less ?x ?y))
+
+But it's quite wrong to have a rule, as many papers did, that if x < y
+then x+1 < y.  That's not true!
+
+(Some combinations of these rules would lead to the query system giving
+the same answer more than once, which is unaesthetic.  The first set of
+rules above avoid that.)
+
+Another approach would use PLUS, which you're given:
+
+(rule (less ?x ?y)
+      (plus ?x (a . ?z) ?y))
+
+This says that x < y if adding some positive number to x gives y.  This is
+elegant because a single rule handles all cases.
+
+
+(b) Divide
+
+Only one rule is needed:
+
+(rule (divide ?dividend ?divisor ?quotient ?remainder)
+      (and (times ?divisor ?quotient ?x)
+	   (plus ?x ?remainder ?dividend)
+	   (less ?remainder ?divisor)))
+
+The third clause is needed to prevent solutions such as 12/4 = 1 remainder 8.
+
+Many people included a lot of base case rules for dividing zero by things,
+dividing things by zero, and so on -- or wrote the rules to exclude zero by
+calling the divisor (a . ?foo).  None of this is necessary; there won't be
+any successful matches of this rule when the divisor is zero.  (This is
+easy to prove: the remainder would have to be less than zero!)
+
+The reason no base case is needed is that this is not a recursive rule;
+there is no reference to DIVIDE in the conditions of the rule.  There is
+still some recursion going on, but it's hidden inside the PLUS and TIMES
+rules.
+
+Scoring:  Each half was worth 2 points if correct, 1 point for a solution that
+has the general idea but with details wrong.  (A common mistake was to think
+that the remainder has to be less than the quotient, or less than the dividend.)
+
+No credit for composition of functions:
+
+  (plus (times ?divisor ?quotient) ?remainder ?dividend)  ; WRONG WRONG WRONG!!!
+
+
+9.  Environment diagram
+
+In the diagram there are three frames:
+
+G:  x=3, y=4, foo=P2 [see below]    (the global frame)
+E1: x=7, extends G
+E2: y=10, extends E1
+
+and two procedures:
+
+P1: parameter x, body (lambda (y) (+ x y)), created in G
+P2: parameter y, body (+ x y), created in E1
+
+When we define FOO, Scheme evaluates the expression
+
+     ( (lambda (x) (lambda (y) (+ x y)))
+       (+ x y) )
+
+The value of the first subexpression is procedure P1, created in the
+global environment (obviously, since it's the only one we have so far).
+The value of the second subexpression is 7, computed using the global
+values of X and Y.
+
+We invoke P1, creating environment E1, in which P1's parameter X is bound to
+the actual argument value 7.  In that new environment we evaluate the body
+of P1, which is another lambda expression, creating P2.
+
+Then DEFINE binds FOO to that result, P2, in the global environment.
+
+When we evaluate the expression (foo 10), environment E2 is created.  FOO's
+parameter Y is bound to the argument value 10, in the new frame.  Then we
+evaluate the body of P2, (+ x y), using the values in E2: x=7 (from E1),
+y=10.  So the answer is 17.
+
+
+Scoring: 1 point for the answer 17.  For the diagram, 3 points minus the
+number of mistakes.  In counting mistakes we looked for three frames,
+two procedures, and five arrows (two arrows extending environments,
+two arrows from procedures to environments, and the arrow binding FOO).
+
+There were too many rearrangement errors to classify, but one common error
+that's worth mention was to say that in E1, X is bound to x+y.  By the time
+E1 is created, we no longer know where the argument value 7 came from;
+that's what it means to say that Scheme uses applicative order.
+
+
+10.  Locate.
+
+The most elegant solution, I think, is this:
+
+(define (locate value struct)
+  (define (help struct fn)
+    (cond ((equal? value struct) fn)
+	  ((pair? struct)
+	   (or (help (car struct) (compose car fn))
+	       (help (cdr struct) (compose cdr fn))))
+	  (else #f)))
+  (help struct (lambda (x) x)))
+
+This is a case in which an iteration-like style, with a helper procedure
+with an extra argument, makes things simpler instead of more complicated.
+(It's not really iterative, of course, since there's a tree recursion,
+but the second recursion, for the cdr, *is* iterative.)
+
+Here's a more straightforward solution:
+
+(define (locate value struct)
+  (cond ((equal? value struct) (lambda (x) x))
+	((pair? struct)
+	 (let ((left (locate value (car struct))))
+	   (if left
+	       (compose left car)
+	       (let ((right (locate value (cdr struct))))
+		 (if right
+		     (compose right cdr)
+		     #f)))))
+	(else #f)))
+
+Note that for both the car and the cdr you have to check whether the
+recursive call actually returned a procedure, rather than #F, before you
+try to compose the procedure with something.
+
+Instead of using COMPOSE you could equivalently use lambda expressions:
+               (lambda (x) (left (car x)))
+
+Notice, by the way, that the iterative-style solution does the composing
+backwards from the recursive-style solution; this is analogous to the list
+reversal that plagues iterative solutions to list-building problems.
+
+One point that many students missed is that the problem says "If the value
+is not found in the structure, LOCATE should return #F" -- not a procedure
+that returns #F!  So you can't say
+
+(define (locate value struct)
+  (lambda (other-struct) ...))         ; wrong
+
+Another commonly missed point is that the problem does *not* say the values
+have to be atomic.  (locate '(a b) '(x y (a b) z)) should work, returning
+the procedure caddr.  In particular, this means that solutions that flatten
+the structure into a simple sequence of atoms, although clever in a way,
+miss the point and aren't satisfactory.
+
+Even worse were the solutions that assume the values are numbers, just
+because the given example had numbers.  A relatively mild version of that
+was to use = for equality checking; much worse was to use list-ref to look
+for the desired element.
+
+A couple of students used AMB in their solutions.  Although we had in mind
+a solution using standard Scheme, we would have allowed this, because it's
+such an appropriate idea -- the problem involves backtracking, so a
+nondeterministic solution makes sense.  But actually getting it right is
+tricky, and nobody managed it:
+
+(define (locate value struct)
+  (define (locate1)
+    (define (help struct fn)
+      (cond ((equal? value struct) fn)
+	    (else (require (pair? struct))
+		  (let ((cxr (amb car cdr)))
+		    (help (cxr struct) (compose cxr fn))))))
+    (help struct (lambda (x) x)))
+  (amb (locate1) #f))
+
+That LOCATE1 subprocedure is required because in case of failure, the
+natural response of the nondeterministic evaluator is to print a message
+saying no more values were found, but we want it to return #F to some
+calling procedure.
+
+Many students made the program much more complicated than necessary, with
+special cases for (car struct), (cadr struct), etc.  Partly this is because
+students don't believe in leaf nodes of trees, and partly it's because
+some students found a somewhat similar problem, called SELECT, in a previous
+exam in the course reader.  But SELECT really did require complications,
+because the first element of a sublist had a special meaning in that problem.
+Here the elements are treated uniformly.
+
+
+Scoring:
+
+4  correct
+3  small errors (typical: only works for atoms, only works if no #F in a list,
+   returns (lambda (x) #f) instead of #f)
+2  has the idea (domain and range correct, uses tree recursion) but
+   more serious errors
+1  not tree recursive (typical: if the car is a list, and doesn't have the
+   value, then the cdr isn't checked)
+0  incoherent

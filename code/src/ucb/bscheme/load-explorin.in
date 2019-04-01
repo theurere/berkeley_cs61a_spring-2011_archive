@@ -1,0 +1,9 @@
+;;explorin.scm must be loaded after simply.scm
+;;simply.scm must be loaded before modeler.stk
+(load "@INSTALLPATH@/berkeley.scm")
+(load "@INSTALLPATH@/simply.scm")
+(load "@INSTALLPATH@/explorin.scm")
+(load "@INSTALLPATH@/modeler.stk")
+(load "@INSTALLPATH@/obj.scm")
+(load "@INSTALLPATH@/turtle-grfx.scm")
+(load "@INSTALLPATH@/which-modeler.scm")

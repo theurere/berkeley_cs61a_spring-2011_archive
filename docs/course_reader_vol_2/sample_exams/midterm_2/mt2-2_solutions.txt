@@ -1,0 +1,609 @@
+CS 61A          Solutions to sample midterm 2 #2
+
+1.  What will Scheme print?
+
+Please put in the start arrows!  Sometimes it's hard to know where your
+diagrams are supposed to begin, especially if you use leftward and upward
+pointing arrows.
+
+> (list (cons 2 3) 4)
+((2 . 3) 4)
+
+          +---+---+     +---+---+
+          |   |   |     |   |  /|
+--------->| | | ------->| | | / |
+          | | |   |     | | |/  |
+          +-|-+---+     +-|-+---+
+            |             | 
+            |             V 
+            |                               
+            |             4
+            |                                  
+            V                                  
+          +---+---+
+          |   |   |
+          | | | | |
+          | | | | |
+          +-|-+-|-+
+            |   |
+            V   V
+
+            2   3
+
+Most people got this.  The ones who didn't most often left out the dot
+in the printed version.
+
+
+> (append (cons '(a) '(b)) '(c))
+((A) B C)
+
+           +---+---+   +---+---+   +---+---+
+           |   |   |   |   |   |   |   |  /|
+---------> | | | ----->| | | ----->| | | / |
+           | | |   |   | | |   |   | | |/  |
+           +-|-+---+   +-|-+---+   +-|-+---+
+             |           |           |
+             |           V           V
+             |
+             |           B           C
+             V
+           +---+---+
+           |   |  /|
+           | | | / |
+           | | |/  |
+           +-|-+---+
+             | 
+             V 
+
+             A 
+
+Many people were confused about this one, especially the CONS part.
+Here is a box and pointer diagram of (cons '(a) '(b)).  The starred
+pair is the one created by the CONS:
+
+
+          ***********
+          *+---+---+*        +---+---+
+          *|   |   |*        |   |  /|
+--------->*| | | ----------->| | | / |
+          *| | |   |*        | | |/  |
+          *+-|-+---+*        +-|-+---+
+          ***|*******          | 
+             |                 V 
+             |                                 
+             |                 B 
+             |                                  
+             V                                  
+	   +---+---+
+	   |   |  /|
+	   | | | / |
+	   | | |/  |
+	   +-|-+---+
+	     | 
+	     V 
+
+	     A 
+
+Even though this structure was created using CONS rather than LIST,
+it's a list, because the cdr of the new pair is a list.  This list
+has two elements; the first is (A) and the second is B.  So in
+effect the call to APPEND is (append '((a) b) '(c)).
+
+We weren't very sympathetic to people who drew diagrams like this:
+
+	   +---+---+
+	   |   |   |
+---------->| | | ------> etc
+	   | | |   |
+	   +-|-+---+
+	     | 
+	     V 
+
+	    (A)
+
+Things in parentheses in the printed representation must be shown
+as pairs in the diagram!
+
+
+
+> (cdadar '((e (f) g) h))
+()
+
+Note that the result is (), not '()!
+
+There really is no need for a box-and-pointer diagram for an empty
+list, which is an atom.  We accepted
+
+	   +---+
+	   |  /|
+---------->| / |
+	   |/  |
+	   +---+
+
+but *NOT* this:
+
+	   +---+---+
+	   |  /|  /|
+---------->| / | / |
+	   |/  |/  |
+	   +---+---+
+
+because that would be a pair, representing the list (()), not an empty list.
+
+Some people got this wrong because they figured the cdadar incorrectly.
+Here's how to get there:
+
+(car '((e (f) g) h))  ===>   (e (f) g)
+(cdr '(e (f) g))      ===>   ((f) g)
+(car '((f) g))        ===>   (f)
+(cdr '(f))            ===>   ()
+
+CDADAR is an abbreviation for (cdr (car (cdr (car ...)))), so you have
+to start at the inside and take the CAR of the argument first.  Some
+people read CDADAR left to right as "take the cdr, then the car, ..."
+but that's wrong.
+
+Scoring:  One point for each, with both printed form and b&p diagram
+correct to get the point.  One point total for people who got all three
+printed results correct but left out the b&p diagrams.
+
+
+
+2.  Fill in the blank.
+
+> (CADADR '(g (h i) j))
+I
+
+
+The letter I is the second element of (H I), so it's
+      (cadr '(h i))
+But the sublist (h i) is the second element of the entire argument,
+so it's
+      (cadr '(g (h i) j))
+So we want
+      (cadr (cadr '(g (h i) j)))
+and that's abbreviated as CADADR.
+
+Scoring: one point, all or nothing!
+
+
+3.  Proj2 data abstraction
+
+(a)  Type-tagged segment ADT.  The solution we wanted was this:
+
+(define (make-segment start end)
+  (attach-tag 'segment (cons start end)))
+
+(define (start-segment seg)
+  (car (contents seg)))
+
+(define (end-segment seg)
+  (cdr (contents seg)))
+
+Alternatively, you could use LIST instead of CONS and CADR instead of CDR.
+
+Here is the crucial point to understand about data abstraction:  WE WANT
+THIS CHANGE NOT TO BREAK EXISTING PROCEDURES IN THE PROJECT!  That means
+that start-segment, for example, must return a vector, just as it did
+before the change.
+
+Some people wrote
+
+(define (start-segment seg)    ;; wrong!!!
+  (attach-tag 'segment (car seg)))
+
+One problem with this is that the start-segment of a segment isn't the
+car of the argument anymore, once we have a type attached.  But it's
+much worse to attach the SEGMENT type to the result, because the result
+isn't a segment!  It's a vector.
+
+Other people gave make-segment only one argument.  Probably this means
+that you don't know what a segment is, because you let your partner do
+all the work on the project.
+
+
+Scoring:
+2  As shown above.
+1  Working code, but not respecting the tagged-data abstraction
+     (e.g., cons instead of attach-tag, cadr and cddr in the selectors).
+0  Anything else.
+
+
+(b) Find the midpoint of a segment or frame.
+
+(define (midpoint shape)
+  (cond ((eq? (type-tag shape) 'segment)
+	 (scale-vect 0.5
+		     (add-vect (start-segment shape)
+			       (end-segment shape))))
+	((eq? (type-tag shape) 'frame)
+	 ((frame-coord-map shape) (make-vect 0.5 0.5)))
+	(else #f)))
+
+We accepted less elegant but correct algorithms for the midpoints of
+the shapes.  For a segment another approach is
+
+         (make-vect (/ (+ (xcor-vect (start-segment shape))
+			  (xcor-vect (end-segment shape)))
+		       2)
+		    (/ (+ (ycor-vect (start-segment shape))
+			  (ycor-vect (end-segment shape)))
+		       2))
+
+For frames we saw two other correct approaches.  One was essentially
+to rewrite frame-coord-map:
+
+         (add-vect (origin-frame shape)
+		   (scale-vect 0.5
+			       (add-vect (edge1-frame shape)
+					 (edge2-frame shape))))
+
+Another was to find the midpoint of a diagonal of the parallelogram:
+
+         (midpoint (make-segment (add-vect (origin-frame shape)
+					   (edge1-frame shape))
+				 (add-vect (origin-frame shape)
+					   (edge2-frame shape))))
+
+Most people had correct algorithms for the midpoint of a segment.  There
+were two common incorrect algorithms for frames; one wrong approach was
+to ignore the frame's origin, and the other was to assume that the frame's
+edge1 contributes only to the x-coordinate of the midpoint and that its
+edge2 contributes only to the y-coordinate.
+
+One reason for incorrect solutions to the midpoint of a frame was that
+people confused the origin of the FRAME with the origin of the COORDINATE
+SYSTEM -- that is, the point (0, 0).  The vector returned by
+(origin-frame shape) points from the coordinate system origin (0, 0) to
+the frame's origin, which is one of its corners.  That corner might or
+might not be at (0,0)!  For example, when you wrote procedures like
+BELOW in the project that combine two pictures in adjacent frames, at
+least one of those frames doesn't begin at (0, 0).
+
+Some people wrote a data-directed solution, including things like
+
+   (put 'frame 'midpoint frame-midpoint)
+
+This was okay, but more work than the problem required.  Other people
+tried to use message passing, with less success.  A correct use of
+message passing means that the data -- the frames and segments -- must
+be represented as procedures:
+
+(define (make-segment start end)
+  (lambda (message)
+     ...))
+
+But this is incompatible with part (a)!  Some people tried to use a
+dispatch procedure for the *operator*:
+
+(define (midpoint shape)   ;; wrong!
+   (lambda (message)
+      ...))
+
+but that doesn't make any sense.  You send messages to objects, not
+to operators.  In general, the way to learn in this course is to focus
+on the IDEAS, not on the SYNTAX.  Don't think:  "Message passing means
+that you say (lambda (message) ...) somewhere."  Instead think:
+"Message passing means that the data objects in the system know how
+to carry out operations on themselves."
+
+
+Some people either didn't read or didn't understand the sample exams
+in the course reader.  Here is a quote from the spring 1995 solutions:
+
+    *** RESPECTING THE DATA ABSTRACTION DOES **NOT** MEAN SAYING "DATUM"
+    *** WHENEVER YOU MEAN CAR, AND "CHILDREN" WHENEVER YOU MEAN CDR!!  That
+    is precisely DISrespecting the data abstraction!  Respecting it means to
+    distinguish between a Tree, whose component parts are called datum and
+    children, and other data types that have other component parts, such as
+    forests (car and cdr, since a forest is just a particular kind of
+    sequence), rational numbers (numer and denom), and so on.
+
+The same thing is true here, except that instead of Trees, this problem
+used tagged data.  RESPECTING THE DATA ABSTRACTION DOES **NOT** MEAN
+SAYING "TYPE-TAG" WHENEVER YOU MEAN CAR, AND "CONTENTS" WHENEVER YOU MEAN CDR!
+That is precisely DISrespecting the data abstraction!  Respecting it means
+to distinguish between a type-tagged datum, whose component parts are
+called type-tag and children, and other data types that have other component
+parts, such as segments, frames, and vectors.
+
+
+Scoring:
+
+3  Correct.
+
+2  The structure of the COND correct, and also
+     (a) both algorithms work, but have data abstraction violations, or
+     (b) one algorithm is correct, and there are no DAVs.
+
+1  At least one working algorithm.
+
+0  Other.
+
+
+4.  Maximum path in Tree
+
+(define (maxpath tree)
+  (if (null? (children tree))
+      (datum tree)
+      (+ (datum tree)
+	 (biggest (map maxpath (children tree))))))
+
+Notice that there is no CAR or CDR in this program!
+
+If you didn't want to use MAP, the equivalent recursive solution is
+
+(define (maxpath tree)
+  (if (null? (children tree))
+      (datum tree)
+      (+ (datum tree)
+	 (maxpath-forest (children tree)))))
+
+(define (maxpath-forest forest)
+  (if (null? (cdr forest))
+      (maxpath (car forest))
+      (max (maxpath (car forest))
+	   (maxpath-forest (cdr forest)))))
+
+This solution does take the CAR and the CDR of a forest (which is
+a sequence of Trees), but still does not apply CAR or CDR to a Tree.
+
+In either case, the algorithm is to find the maxpath of each child,
+take the biggest of those, and add the value at the root.  So, for
+the example in the exam, the maxpath values for the three children
+are 10 (7+3), 11 (2+9), and 10 (4+6).  The biggest of those is 11,
+so we add 5 to that and the overall answer is 16.
+
+It doesn't work to find the largest immediate child of the root
+and work downward from there.  In this example, the largest of the
+children is 7, the first child, but the largest overall path doesn't
+go through that child.
+
+
+PLEASE don't ever try to solve a tree problem iteratively!  Iteration
+is good for sequences of information -- that is, for one-dimensional
+structures.  But tree problems are fundamentally recursive.  A lot of
+solutions had the form
+
+(define (maxpath tree)
+  (maxpath-helper tree (children tree) tree '() '() 0 (datum tree)))
+
+or some similar thing with zillions of extra arguments.  All such
+solutions turned out to be quite wrong, and what's worse, they take
+a long time for us to grade!  :-(
+
+
+Here's another correct solution that some people tried:
+
+(define (maxpath tree)
+  (biggest (maxpath-helper tree)))
+
+(define (maxpath-helper tree)
+  (if (null? (children tree))
+      (LIST (datum tree))
+      (map (lambda (t) (+ (MAXPATH t) (datum tree)))
+	   (children tree))))
+
+Unfortunately, most people who tried this made two mistakes; one was
+to leave out the LIST, using just (datum tree) as the base case, and
+the other was to call maxpath-helper instead of the capitalized
+MAXPATH above.  Both of these errors could be avoided by thinking
+about the domains and ranges of the functions involved:
+
+	function	argument	  return
+
+	biggest		list of numbers	  number
+	maxpath		Tree		  number
+	maxpath-helper	Tree		  list of numbers
+
+Since BIGGEST expects a list as its argument, maxpath-helper
+must return a list, even in the base case.  And since + expects
+numbers as arguments, you can't use maxpath-helper to provide
+one of the arguments to +, because maxpath-helper returns a list.
+
+
+This was apparently the hardest problem, mainly because people don't
+understand the Tree Abstract Data Type.  The two parts of a Tree
+are its DATUM, which is a number, and its CHILDREN, which is a forest,
+that is, a list of Trees.  A list of Trees is not a Tree!  An expression
+such as (maxpath (children tree)) has to be wrong because maxpath
+requires a Tree as its argument, not a list of Trees.
+
+
+Scoring:  There were so many wrong approaches that I can't possibly
+list them all.  The general strategy we tried to follow was
+
+5     correct
+3-4   has the idea
+1-2   has an idea
+0     no idea
+
+Here are a few common cases:
+
+4   correct except for the base case
+3   recursive call to maxpath-helper as described above
+2   (maxpath (children tree))
+2   binary tree ADT (e.g., calls to left-branch and right-branch)
+1   (biggest (children tree)) with no recursion
+
+
+5.  Debugging the broken EVAL-1.
+
+Of the six test cases given, the four that don't give error messages
+give the correct answer; it's the two that say ERROR that are wrong.
+What do those two have in common?  A compound expression -- a procedure
+call -- is used as an argument to another procedure.
+
+(In the first case, the expression (* 2 2) provides an argument to +;
+in the second, the expression (+ 1 1) provides an argument to the
+procedure created by the lambda expression.)
+
+So there's something wrong with the evaluation of argument subexpressions.
+That evaluation of subexpressions happens on line 11.  The correct line is
+
+	(map eval-1 (cdr exp)) ))  ; closing earlier open parentheses
+
+The reason some of the test cases *do* work is that numbers are
+self-evaluating, so using the argument expressions instead of the argument
+values doesn't matter if the argument is just a number.  The student said
+
+	(cdr exp) ))	; This is what you should have in your solution.
+
+leaving out the MAP EVAL-1 part.
+
+The most common error was to say that the error was
+
+	(eval-1 (cdr exp)) ))
+
+omitting just the MAP.  But that would be a disaster; none of the examples
+would have worked.  Take the first test case: (+ 2 3).  If that's EXP,
+then (CDR EXP) is (2 3).  But if we try to EVAL-1 that list, we are asking
+to invoke the procedure 2 with the argument 3!
+
+By the way, the reason the last test case doesn't fail is that IF is a
+special form, so eval-1 never reaches line 11; the subexpressions are
+evaluated on lines 6-8.
+
+Scoring: 5 if correct, 2 if line 11 changed incorrectly, otherwise 0.
+(But in the rare cases where the correct change was attributed to line
+10 or 12, we figured you just misread the line numbers and didn't take
+off points.)  We ignored any explanations you gave, which was a good thing
+in some cases because the explanations were iffy.
+
+
+6.  Data directed programming
+
+I said at least twice in lecture that data-directed programming does NOT
+mean using get and put; the book's example of data-directed programming
+is just one example of a more general idea.  The idea is that instead of
+building the specific details of one problem into our procedures, we
+write more general procedures that use some auxiliary data structure to
+specify the precise problem we're supposed to solve.  In this case, the
+list of transitions ((1 A 2) (1 B 3) ...) is the data structure that
+tells our GENERAL fsm interpreter which SPECIFIC fsm we're using.
+
+To make that clearer, here is a program for the particular fsm used as
+the example in the question, NOT using data-directed programming:
+
+(define (transition state letter)
+  (cond ((= state 1) (state1 letter))
+	((= state 2) (state2 letter))
+	((= state 3) (state3 letter))
+	((= state 4) (state4 letter)) ))
+
+(define (state1 letter)
+  (cond ((eq? letter 'A) 2)
+	((eq? letter 'B) 3)
+	((eq? letter 'C) 4)
+	(else 0) ))
+
+(define (state2 letter)
+  (cond ((eq? letter 'A) 1)
+	(else 0) ))
+
+... and so on for the other two states.  This program has the specific
+transition information built into its procedures.  If you wanted to
+change a transition, you'd have to rewrite some procedure.  Some people
+did in fact offer solutions like this, and got no credit.  Here is the
+solution we had in mind:
+
+(define (transition fsm state letter)
+  (cond ((null? fsm) 0)
+	((and (= state (caar fsm))
+	      (eq? letter (cadar fsm)) )
+	 (caddar fsm) )
+	(else (transition (cdr fsm) state letter)) ))
+
+(define (process fsm state wd)
+  (if (empty? wd)
+      state
+      (process fsm (transition fsm state (first wd)) (bf wd)) ))
+
+This program works not only for the particular fsm diagrammed in the
+question, but for ANY fsm, if we give it the appropriate list of
+transitions as an argument.
+
+For some reason that I don't understand, practically everyone returned
+(cddar fsm) instead of the correct (caddar fsm).  You want the third
+ELEMENT of the transition sublist, not a SUBLIST of the transition sublist.
+But we didn't take off for that.
+
+It's perfectly fine if you want to avoid things like "caddar" (pretty hard
+to work through, isn't it?) by defining an abstract data type for
+transitions.  But please don't think that "data-directed programming"
+MEANS using abstract data types.  The two ideas are quite distinct, even
+though we talked about tagged data during the same week as ddp.  If
+you want to use an abstract data type your program will look like this:
+
+(define start-state car)
+(define arrow-label cadr)
+(define end-state caddr)
+
+(define (transition fsm state letter)
+  (cond ((null? fsm) 0)
+	((and (= state (start-state (car fsm)))
+	      (eq? letter (arrow-label (car fsm)) )
+	 (end-state (car fsm)) )
+	(else (transition (cdr fsm) state letter)) ))
+
+You could also define selectors like first-transition and rest-transitions
+for the fsm list itself, but I wouldn't bother.  Car and cdr are clear
+enough for a sequence of any number of the same kind of thing, such as a
+sequence of transition triples.
+
+But, speaking of data types, it won't work at all to use car and cdr on
+the word we're processing in part B!  Car and cdr only work on pairs
+(and lists, which are made of pairs), not on words.
+
+It would indeed be possible to use GET and PUT to implement a data-directed
+fsm program.  You'd set up the program for a particular fsm by PUTting each
+transition, with the start state and letter as the row and column labels,
+and the end state as the contents of each cell.  This isn't exactly what we
+asked for, but we gave full credit if you did that properly.  But we gave
+no credit at all if you tried to invoke the contents of the cell as a
+procedure!  If you did that, you were just blindly copying the example from
+the book without understanding it.
+
+Scoring:  Having the idea in part A meant using the fsm list to write a
+general program.  No credit if the letters A, B, and C appeared in your
+program (not data directed) nor if you invoked something you found in a
+table (totally off the wall).  Having the idea in part B meant using the
+procedure you wrote in part A!  People who tried to do part B from scratch
+invariably wrote programs that CDRed down the fsm list once, then lost it
+and couldn't process the second letter.  If you got part A completely right
+but totally messed up part B, that was three points.  The other way around
+was two points.  If you partially messed up both parts, we used our
+judgement in accord with the standard five-point formula.
+
+
+7. OOP
+
+(a) Parents and children.  A child class is /a kind of/ the parent class, or
+/a specialization of/ the parent class, /not/ a part or subset of the parent.
+
+Is a keypad a kind of cell phone?  NO, a keypad is part of a cell phone.
+
+Is an office building a kind of building?  YES.
+
+Is a staple a kind of stapler?  NO, it's something you put into a stapler.
+
+Is an arm bone a kind of arm?  NO, it's part of the arm.
+
+Is an arm bone a kind of bone?  YES.
+
+Is an arm bone a kind of person?  NO, it's part of a person.
+
+(b) Class or instance variable.  It's a class variable if it's the same for
+every instance of the class; it's an instance variable if each instance has
+its own value.
+
+The number of taxis in the city isn't different for each taxi; it's a property
+of the entire CLASS of taxis.
+
+The number of milk cartons in a fridge is different for each fridge; mine has
+quite a few because my son and I can't agree about whether to use fat-free
+milk or high-fat (2%) milk, so we get both kinds.  A fridge in a photographic
+studio might be full of film, and have no milk cartons at all.  So the number
+is different for each INSTANCE of the fridge class.
+
+Scoring: 1/2 point each, rounded down to an integer.

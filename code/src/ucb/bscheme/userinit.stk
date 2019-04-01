@@ -1,0 +1,7 @@
+(if (not (getenv "ENVDRAW_LIBRARY_PATH")) 
+   (require "slib"))
+(if (not (getenv "ENVDRAW_LIBRARY_PATH"))
+    (require "berkeley"))
+(define report-error #f)
+(define (bgerror s) 
+  (display s) (newline))

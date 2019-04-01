@@ -1,0 +1,481 @@
+CS 61A          Solutions to sample midterm 1 #2
+
+1.  What will Scheme print?
+
+> (every (bf x) '(ab cd ef gh))
+ERROR (unbound symbol x)
+
+	The answer (B D F H) would be correct if the question were
+		(every (LAMBDA (X) (bf x)) '(ab cd ef gh))
+	but in the actual question, the first argument to EVERY isn't
+	a function; it's an attempt to compute the butfirst of something.
+
+
+> (cond ('hello 5) (#t 6) (else 7))
+5
+
+	Every value other than #F counts as true, so in particular the
+	value HELLO is true.
+
+	We thought some people might not know that, and would therefore
+	say 6 (since the test in the second clause is clearly true).  But
+	actually the common wrong answer was ERROR, probably because some
+	people think a COND clause has to start with two open parentheses.
+
+> (let ((x 10)
+        (y (+ x 2)) )           ;The (+ x 2) is evaluated OUTSIDE
+    (* y 3))                    ;  the scope of the LET
+Error: variable x is not bound.
+
+The last example is equivalent to
+( (lambda (x y) (* y 3))   10 (+ x 2) )
+  ----------------------   -- -------
+       function           arg   arg
+
+
+> (cons (list '() '(b)) (append '(c) '(d)))
+((() (b)) c d)
+
+--->XX--->**--->X/
+    |     |     |
+    |     V     V
+    |     c     d
+    |
+    V
+    /X--->X/
+          |
+          V
+          X/
+          |
+          V
+          b
+
+        The pair marked ** in the diagram above is the value of the
+        subexpression (APPEND '(C) '(D)), namely, the list (C D).
+        The CONS sticks one pair in front of that, the pair at the
+        start arrow.  Its car, the first element of the new list, is
+        the value of (LIST '() '(B)), which is (() (B)).
+
+	When the empty list is an element of a list, we put a slash in
+	the CAR of the corresponding pair of the spine, as in the pair
+	indicated as /X near the bottom of the diagram above.
+
+
+> ((lambda (x) (cons x x)) '(a))
+((a) a)
+
+----->XX
+      ||
+      VV
+      X/
+      |
+      V
+      a
+
+	There are only two pairs in the box and pointer diagram.  The quoted
+	argument '(a) produces the lower pair, which should be easy to
+	understand.  That pair is the value of the X in the lambda expression,
+	so its body, (CONS X X), produces one pair whose car and cdr are the
+	same thing.  In reading the diagram, remember that an arrow that
+	points to a pair points to the entire pair, not just to half of it.
+	So the result of the CONS is ((a) . (a)), a pair whose car and cdr
+	are both (a).  But Scheme never prints the characters ". (" when
+	printing a list structure; a pair whose cdr is a list must print as
+	a list, namely ((a) a).  The elements are the car of the pair, (a),
+	and the CADR (not the cdr) of the pair, namely A.
+
+
+> (cdar '((1 2) (3 4)))
+
+(2)
+
+--->X/
+    |
+    V
+    2
+
+	(car '((1 2) (3 4)))  -->  (1 2)
+	(cdr '(1 2))          -->  (2)
+
+	The important point is that CDAR means "the CDR of the CAR,"
+	not "first call CDR then call CAR"!
+
+
+Scoring: one point each.
+
+
+2.  Orders of growth, recursive/iterative processes.
+
+Scoring: Each of the four questions were graded 2 or 0 points. No partial
+credit.  No credit if right true/false answer but wrong explanation.
+
+(define (garply n)
+   (if (< n 20)
+      n
+      (+ (foo n)
+         (garply (- n 1)))))
+
+a) We have enough information to determine the order of growth of GARPLY.
+
+False. For large N, the procedure FOO is called for every recursive call of
+GARPLY. Thus the order of growth of GARPLY depends the order of growth of FOO.
+
+Some students said that since FOO was defined, we could determine the order of
+growth of FOO and thus determine the order of growth of GARPLY. This is not
+what we were looking for because the information about the order of growth of
+FOO is not available. However, students expressing a clear understanding of
+the issues were given full credit. Only saying: "since FOO is defined, then we
+can determine the order of growth of GARPLY" did not get credit; only papers
+that discussed FOO's order of growth could get credit.
+
+b) No matter how FOO is defined, GARPLY will always have an order of growth
+greater than or equal to Theta(n).
+   
+True. Note that no matter how FOO is defined, GARPLY still makes Theta(n)
+recursive calls to itself. Even if the order of growth of FOO is constant
+(Theta(1)), then the order of growth of GARPLY is at still Theta(n). Thus it
+must be at least Theta(n).
+
+A common wrong answer is talking about the order of growth for N < 20. By
+definition, order of growth is concerned only with large N.
+
+c) GARPLY has an order of growth of Theta(n^2) if FOO is defined as:
+
+   (define (foo n)
+      (if (< n 100)
+         121
+         (+ (* n 100) (foo (- n 1)))))
+         
+True. Note as n gets large, FOO makes Theta(n) recursive calls to itself. In
+each recursive call, FOO executes a constant number of operations, thus FOO's
+order of growth is Theta(n). Since GARPLY makes Theta(n) recursive calls, each
+of which will do Theta(n) work, GARPLY's order of growth will be Theta(n^2).
+
+One common misconception is that in this situation the orders of growth of FOO
+and GARPLY are added.  We do add orders of growth, but since we are executing
+a Theta(n) procedure (FOO) Theta(n) times, we are adding Theta(n) operations
+together Theta(n) times.  This will result in a Theta(n^2) procedure.
+
+d) GARPLY generates a iterative process.
+
+False. In the final line of each recursive call to garply, we *add* (FOO N) to
+(GARPLY (- N 1)). This addition must wait for (GARPLY (- N 1)) to complete
+before (GARPLY N) can complete and return.  Thus, this is a recursive process.
+
+
+3.  Normal vs. applicative order.
+
+You can try this online:
+STk> (load "~cs61a/lectures/1.1/order.scm")
+STk> (def (mountain x) 'done)
+STk> (def (dew) (dew))
+
+STk> (normal (mountain (dew)))
+(mountain (dew)) ----> 
+(quote done)
+done
+
+	In normal order evaluation, we *don't* evaluate the subexpression
+	(dew) first; we substitute the expression itself for X (the formal
+	parameter) in the body of MOUNTAIN.  But that body is 'DONE, which
+	doesn't contain X, so there's no substitution and we just evaluate
+	'DONE, whose value is DONE.
+
+	Note that the value is DONE, not 'DONE!  There are no quotes in
+	the values Scheme produces for quoted words.
+
+STk> (applic (mountain (dew)))
+(mountain (dew))
+   (dew) ----> 
+   (dew) ----> 
+   (dew) ----> 
+   (dew) ----> 
+   (dew*** Interrupt ***
+
+	In applicative order, Scheme starts by evaluating the argument
+	subexpression (DEW).  Since DEW has no arguments, there's nothing
+	to substitute, and Scheme just evaluates the body, which is again
+	(DEW), invoking the same procedure.  This is a recursion with no
+	base case, which is an infinite loop.  So the answer we wanted
+	is ERROR, but we accepted anything that shows understanding of
+	what happens, e.g., "loop" or "infinite loop" was fine.
+
+STk> (normal (mountain dew))
+(mountain dew) ----> 
+(quote done)
+done
+
+	Again, in normal order, the argument subexpression DEW isn't
+	evaluated, but is substituted into the body as is.  But since
+	X isn't used in the body, there's no substitution, and we
+	just evaluate the body, which is 'DONE, whose value is DONE.
+
+STk> (applic (mountain dew))
+(mountain dew)
+(mountain dew) ----> 
+(quote done)
+done
+
+	Finally, in applicative order Scheme does evaluate the argument
+	subexpression DEW first.  The value of that expression is a procedure.
+	Since there are no parentheses around its name in the expression, we
+	aren't *invoking* the procedure, so there is no infinite loop.
+
+	Some people said "error -- unbound variable" for this one.  Why?  Both
+	MOUNTAIN and DEW are defined; they're the names of procedures, which
+	are perfectly good values.
+
+Common wrong answers:
+
+	ERROR, ERROR, DONE, DONE:  These people just used applicative
+	order (which is what Scheme actually uses) all the time.
+
+	DONE, ERROR, DONE, ERROR:  These people think that to name a
+	procedure is to invoke it, ignoring the lack of parentheses in
+	the second expression.
+
+	DONE, PROCEDURE, DONE, ERROR:  I don't know what these people
+	were thinking -- maybe that the expression (DEW) invokes DEW
+	which returns DEW, as if it had been (define (dew) dew).
+
+Score: 1/2 point per correct response, rounded down.
+
+
+4.  Recursive procedures.
+
+One way to think about this problem is that it's essentially a filtering
+question, like the ends-e procedure you wrote in homework #2.  That is,
+we are given a sentence and we want to return a subset of the elements
+that we're given.  So, to help us think about the problem, let's review
+the solution to that earlier problem:
+
+(define (ends-e sent)
+  (cond ((empty? sent) '())
+	((last-e? (first sent))
+	 (se (first sent) (ends-e (bf sent))) )
+	(else (ends-e (bf sent))) ))
+
+[Never mind about the predicate last-e? that tests if an individual word
+ends in E.  That's not important for our present purpose, which is to show
+the structure of a filtering procedure.]
+
+The every-nth problem is both similar to ends-e, in that we want to return
+a subset of the argument, and different, because the criterion on which we
+select the elements to keep is based on the *position* of an element,
+rather than on the *value* of the element.  So we can't just use a predicate
+function of the element, analogous to the expression (last-e? (first sent))
+above.  Rather, we have to check whether the position that we're up to in
+the sentence is a multiple of the numeric argument.
+
+In order to do that, we need to know the position.  As we recursively
+butfirst our way through the sentence argument, we need to have a variable
+that keeps track of the position.  To do that, we define a helper procedure
+that takes the position as an additional argument, and we initially invoke
+that procedure with a position of 1:
+
+(define (every-nth n sent)
+  (define (helper n sent pos)
+    (cond ((empty? sent) '())
+	  ((= (remainder pos n) 0)
+	   (se (first sent) (helper n (bf sent) (1+ pos))) )
+	  (else (helper n (bf sent) (1+ pos))) ))
+  (helper n sent 1) )
+
+Notice that the body of helper looks very much like the body of ends-e.
+
+There were *many* ways to solve this problem.  Here are two more:
+
+(define (every-nth n sent)
+  (define (helper cnt sent)
+    (cond ((empty? sent) '())
+	  ((= cnt 1) (se (first sent) (every-nth n (bf sent))))
+	  (else (helper (-1+ cnt) (bf sent))) ))
+  (helper n sent) )
+
+(define (every-nth n sent)
+  (if (< (count sent) n)
+      '()
+      (let ((chopped ((repeated bf (-1+ n)) sent)))
+	(se (first chopped) (every-nth n (bf chopped))) )))
+
+The most crucial point is that you need an extra counter (the variable
+CNT in the middle version above) to count down the N-1 ignored words
+without losing the value of N for the next cycle.  This means that there
+has to be a helper procedure with CNT as an argument.  (In the third
+version, REPEATED is the helper procedure.)
+
+A common mistake was to have a base case that only terminates properly
+if the length of SENT is an exact multiple of N.  For example, if the
+third version above said
+  (if (empty? sent) ...)
+it would exhibit this mistake.
+
+Another common mistake was to chop off enough words in finding the
+first word to keep, but not to chop them off in the recursive call.
+This is the situation if the last line of the third version is
+changed to
+        (se (first chopped) (every-nth n (bf sent))) )))
+
+I was pleased that only a few people tried to do BASIC-style programming
+with a sequence of DEFINEs (or LET assignments) that depended on each
+other, or by thinking that an expression like (1+ cnt) changes the value
+of the variable cnt.
+
+Scoring: 5 if it's right; 3-4 if it has the general idea; 1-2 if it
+has an idea; 0 if it has no idea.  Not having an extra cnt variable
+counted as not having the idea; those papers got 2 points unless there
+was also something else wrong.
+
+
+5.  Higher order procedures.
+
+The solution we expected was this:
+
+(define (pairmap FN sent)
+  (if (empty? (bf sent))
+      '()
+      (se (FN (first sent) (first (bf sent)))
+	  (pairmap FN (bf sent)))))
+
+(define (differences sent)
+  (pairmap - sent))
+
+(define (wordpairs sent)
+  (pairmap word sent))
+
+The three places where the new parameter FN appear above are the
+crucial points in this program.
+
+
+Another solution that we accepted as equally good was to make
+pairmap a procedure that returns a procedure:
+
+(define (pairmap fn)
+  (lambda (sent)
+    (if (empty? (bf sent))
+	'()
+	(se (fn (first sent) (first (bf sent)))
+	    ((pairmap fn) (bf sent))))))
+
+(define differences (pairmap -))
+(define wordpairs (pairmap word))
+
+But it's a little tricky to get the recursive call right this way.
+
+
+Many people used "pred" as the formal parameter for the function,
+because they copied the pattern of an old exam question in which
+that argument was a predicate function.  Of course Scheme doesn't
+care what name you use, but when you blindly copy a program like
+that, we don't have a lot of confidence that you really understand
+what you're doing!
+
+A few people wrote procedures that worked but didn't really
+capture the pattern of mapping a function over pairs, e.g.,
+they said (se (fn sent) (pairmap fn (bf sent))) and then had
+to say
+
+(define (differences sent)
+  (pairmap (lambda (sent) (- (first sent) (first (bf sent)))) sent))
+
+This sort of misses the point of the question, but we only took
+off one point for it.
+
+
+Scoring:  One point each for the rewrites of DIFFERENCES and WORDPAIRS.
+For the PAIRMAP part of the problem,
+
+8	correct
+7	tiny error
+6 or 4	has the idea
+2	has an idea
+0	other
+
+Specific common problems:
+
+Works but not really the right pattern: 7
+
+No FN argument in the recursive call: 6
+
+No combining with SE: 4
+
+Building the specific cases of DIFFERENCES and WORDPAIRS into the
+definition of PAIRMAP: 0.  This is a really bad mistake; the whole
+central idea of computer science is to *generalize* from examples!
+
+
+6.  Data abstraction
+
+(a) odd-sock?
+
+Here are several alternatives:
+
+(define (odd-sock? drawer)
+  (not (null? (filter (lambda (color) (odd? (howmany color drawer)))
+                      (colors drawer) ))) )
+
+(define (odd-sock? drawer)
+  (memq #t (map (lambda (color) (odd? (howmany color drawer)))
+                   (colors drawer) )) )
+
+(define (odd-sock? drawer)
+  (define (helper colorlist)
+    (cond ((null? colorlist) #f)
+          ((odd? (howmany (car colorlist) drawer)) #t)
+          (else (helper (cdr colorlist))) ))
+  (helper (colors drawer)) )
+
+The crucial point is that you have to examine each color in the list
+of colors, *not* each sock in the drawer.  If you talk about (car drawer)
+you're wrong for two reasons: you'll get the wrong answer, and you're
+violating the sockdrawer data abstraction.  (It's okay to talk about
+the car of the list returned by COLORS, because that's just a sequence,
+not a sockdrawer.)
+
+Scoring: 3 if correct,
+         2 if has the idea,
+         1 if has an idea,
+         0 if not.
+
+Many people wrote a procedure that checked if *all* colors have an odd
+number of socks, rather than if *any* color has an odd number.
+
+
+(b) changing the representation
+
+(define (colors drawer)
+  (if (null? drawer)
+      '()
+      (cons (caar drawer) (colors (cdr drawer))) ))
+
+(define (howmany color drawer)
+  (cond ((null? drawer) 0)
+        ((eq? color (caar drawer)) (cadar drawer))
+        (else (howmany color (cdr drawer))) ))
+
+You can also do it more tersely using general programming tools:
+
+(define (colors drawer)
+  (map car drawer))
+
+(define (howmany color drawer)
+  (cadr (assoc color drawer)) )
+
+... but you don't know about assoc yet so we didn't expect that.
+
+Practically everyone said (cdar drawer) instead of (cadar drawer) in
+defining HOWMANY.  You want the second element (which is the cadr) of
+the two-element sublist (which is the car of drawer).  But we didn't
+take off points for that, since we only had two points to work with.
+
+The most common serious errors were to omit the recursion in COLORS
+and to forget what HOWMANY is supposed to do, writing instead a procedure
+to add up the total number of socks in the drawer.
+
+Many people invented selectors with names like FIRST-SOCK-COLOR and so on
+to use here.  Since we are writing selectors, defining the data abstraction
+itself, it's perfectly okay to talk about things like the CAAR of the drawer.
+It wouldn't be okay in a procedure "above the line."
+
+Scoring: 2 if correct,
+         1 if either one selector is correct or both nearly correct.

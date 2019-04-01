@@ -1,0 +1,484 @@
+CS 61A		Solutions to sample midterm 3 #2
+
+1.  Box and pointer.
+
+(let ((x (list 1 2 3)))
+  (set-cdr! (car x) 4)
+  x)
+
+prints: *** Error:
+    set-cdr!: wrong type of argument: 1
+
+(CAR X) is 1, not a pair, so it has no cdr to mutate.
+
+
+(let ((x (list 1 2 3)))
+  (set-cdr! x 4)
+  x)
+
+(1 . 4) is printed.
+
+X-->[o|o]--> 4      
+     |      
+     V      
+     1 
+
+Since we are changing the list's cdr to a non-pair, it becomes a "dotted pair."
+
+
+(let ((x (list 1 2 3)))
+  (set-car! (cdr x) x)
+  x)
+
+(1 (1 (1 (1 (1 ...   is printed.
+
+
+      +------+
+      |      |
+      V      |
+X-->[o|o]-->[o|o]-->[o|/]
+     |               |      
+     V               V      
+     1               3
+
+The list's second element is replaced with the list itself, making a circular
+list.  3 is still the third element, but the print procedure never reaches it.
+
+
+(define a ((lambda (z) (cons z z)) (list 'a)))
+(set-cdr! (car a) '(b))
+a
+
+((a b) a b) is printed.
+
+A-->[o|o]
+     | | 
+     | |
+     | |    
+     | |    
+     V V    
+    {o|o}-->[o|/]
+     |       |      
+     V       V      
+     a       b 
+
+Note that the two arrows downward from the first pair point to the same place!
+An arrow to a pair points to the entire pair, not just to its car or its cdr.
+(By contrast, an arrow *from* a pair *does* come from one half of the pair,
+not from the entire pair.)
+
+The pair in {braces} is the one whose cdr is changed (from being the empty
+list) by the set-cdr! invocation.
+
+
+Scoring: One point per printed representation; one point per diagram.
+
+
+
+2.  Assignment, state.
+
+(define (make-player room)
+  (lambda (message)
+    (set! room (next-room room message))
+    room))
+
+That's it!  There's no need to check for specific messages such as South,
+since next-room will take care of that for you.
+
+Scoring:
+
+4  correct
+3  sets room correctly but doesn't return it
+2  domain and range of make-player and of the lambda correct, but
+   something's wrong with setting room.
+1  room is set, but no lambda
+0  even worse
+
+
+3.  Environment diagram.
+
+
+First of all, in this problem there are two procedures created:
+
+P1: parameters X and F, body (IF ...)
+
+P2: parameter Y, body (+ X Y)
+
+
+There are also four environment frames:
+
+G: the global frame
+
+E1: has X bound to 3, F bound to #F
+
+E2: has X bound to 5, F bound to procedure P2
+
+E3: has Y bound to 7
+
+
+Solutions not satisfying the above generally got no points.
+
+The hard part is how to hook these up.  When FOO is defined, a binding
+for FOO is made in the global environment.  Also, the global environment
+is current when the (outer) LAMBDA expression is evaluated, so FOO is P1
+and P1's right bubble points to G.
+
+By the way, that first expression could have been written as
+
+        (define (foo x f) ...)
+
+with exactly the same meaning.
+
+That's all that happens when the first expression is evaluated.
+Procedure P2 and frames E1 through E3 are all created during the
+evaluation of the second expression.
+
+First we call FOO with arguments 3 and #F.  This creates frame E1,
+which extends G, because G is what P1's right bubble points to.
+
+Now we evaluate the body of P1 (a/k/a FOO), using E1 as the current
+environment.  The body is the IF expression.  F is false, so we must
+evaluate (FOO 5 (LAMBDA ...)).
+
+To evaluate a procedure call we first evaluate all the subexpressions.
+In particular, the inner LAMBDA expression is evaluated at this time,
+with E1 as the current environment.  Therefore, P2's right bubble
+points to E1.
+
+Once we've evaluated the subexpressions, we create a new frame, E2,
+binding FOO's parameters to these new arguments.  So in E2 the value
+of X is 5, and the value of F is procedure P2.  Note that this
+binding for F is in E2, but the procedure to which F is bound was
+created in E1.  That's really important, and many groups missed it.
+
+What environment does E2 extend?  Since we are calling P1 (a/k/a FOO),
+we extend the environment in P1's right bubble, namely G.  This, too,
+is a really important point.  If you had E2 extend E1, you are using
+dynamic scope, not lexical scope, which is correct for Scheme.
+
+We now evaluate the body of P1, the IF expression, with E2 current.
+The value of F is true in this environment (since anything other than
+#F is considered true), so we now evaluate (F 7).
+
+To do that, we make a frame, E3, in which Y is bound to 7.  What environment
+does E3 extend?  The procedure we're calling, P2, was created in E1, so E3
+must extend E1 -- not E2, even though that's the current environment.
+
+Since E3 extends E1, the relevant value of X is 3, and so the answer
+that Scheme prints is 10, which is 3+7.
+
+The most common wrong answer was 12, which is 5+7.  (Only a handful of
+papers had any answer other than 10 or 12.)  As it turns out, there were
+two ways of getting the answer 12, with different scores:
+
+  * Many groups thought that procedure P2 was created in environment E2,
+    and so E3 would extend E2 even following the lexical scope rule.
+    This was a relatively mild error, getting 2 points.
+
+  * Many other groups used dynamic scope, getting 1 point.  You were
+    deemed to be using dynamic scope if E3 extended E2 even though P2's
+    right bubble pointed to E1.  You were also deemed to be using
+    dynamic scope if E3 extended E2, and E2 extended E1, regardless of
+    where P2 pointed.
+
+    (A few papers had E2 extending E1, but E3 correctly extending E1,
+    the diagram otherwise correct, and an answer of 10.  These groups
+    were not deemed to be believers in dynamic scope, but merely
+    careless, getting 2 points.)
+
+Several groups got the answer 10 despite incorrect diagrams.  This was a
+surprise, but it turned out that they did it by mixing the substitution
+model with the environment model.  (Since the expressions in the problem
+did not involve mutation, the substitution model does yield the right
+value for (FOO 3 #F) even though it's not what Scheme really does.)
+More specifically, these solutions had (+ 3 Y) instead of (+ X Y) as the
+body of P2.  Such papers got 1 point.
+
+Some papers had P2's right bubble pointing to E3, a frame that didn't
+even exist when P2 was created.  We don't understand what those groups
+were thinking.
+
+Another zero-point solution was to have bindings to expressions rather
+than to values.  For example, some papers had a binding in E2 of the form
+
+	F: (lambda (y) (+ x y))
+
+It's really important to understand that Scheme's job is to translate
+expressions into values, and that only values get into environments.
+(This is what it means to say that Scheme uses applicative order
+evaluation, rather than normal order.)
+
+Scoring:
+
+3  OK
+2  lexical scope, but some error
+1  dynamic scope, or substitution model
+0  gibberish, extra frames, expressions in environments
+
+
+4.  List mutation.
+
+We were surprised at how hard you found this problem.  The solution
+we wanted is pretty short and simple:
+
+(define (merge! a b)
+  (cond ((null? a) b)
+	((null? b) a)
+	((<= (car a) (car b))
+	 (set-cdr! a (merge! (cdr a) b))
+	 a)
+	(else
+	 (set-cdr! b (merge! a (cdr b)))
+	 b)))
+
+This solution DEPENDS CRITICALLY on the fact that merge! RETURNS A VALUE.
+Most of you got in trouble by forgetting to return a value.
+
+The easiest way to think about this problem may be to start by writing
+a functional (non-mutating) version:
+
+(define (merge a b)        ; Not a solution to the exam problem!
+  (cond ((null? a) b)
+	((null? b) a)
+	((<= (car a) (car b))
+	 (cons (car a) (merge (cdr a) b)))
+	(else
+	 (cons (car b) (merge a (cdr b))))))
+
+There's a stream version of this procedure in the book, and in any case
+you should find it easy to invent this.  The mutating version has the
+SAME STRUCTURE, but instead of calling CONS it has to mutate an
+existing pair, and separately return a value.
+
+One of the most important ideas you can learn is the mathematical
+concept of SYMMETRY.  In this case, what that means is that you should
+notice that merge! treats its two arguments equivalently; if you
+interchanged the order of the arguments you should still get the same
+answer.  Therefore, your program should be symmetrical as well; anything
+you do to A should be done in the same way to B.  Many people used
+asymmetrical kludges, and therefore had incredibly long programs that
+didn't work.
+
+Another good idea to learn is QUIZMANSHIP.  Some time around your
+11th or 12th cond clause, you ought to stop and think, "They wouldn't
+assign something this complicated on an exam."  (This is quite
+different from the sort of quizmanship in which you try to guess at
+answers based on irrelevant factors.)
+
+Several solutions had cond clauses with complicated conditions such as
+    (and (< (car a) (car b)) (> (car a) (cadr b)))
+There are a few situations in which you really do have to use this
+degree of complexity, but they're rare.  Really what this means is
+that you're not trusting the recursion to do its job with the second
+elements of the lists.
+
+Several solutions rearranged things in a way that would work only if
+the second-smallest number is in the other list from the smallest
+number.  That is, you hook the two cars together and then recursively
+deal with the two cdrs.  Think about a case like
+   (merge! (list 1 2 3) (list 4 5 6))
+In this example the result should be the same as if you'd appended
+the lists, not the same as if you interleaved them.
+
+A few people did append the lists, and then sort them by insertion
+sort or bubble sort or some such thing.  This can work, and we
+gave full credit for working solutions of this kind, but you should
+be aware that it makes the problem take O(n^2) time instead of
+O(n), and it's more complicated to write correctly, too!  By
+appending the two lists you're losing the valuable information
+that each of them is already ordered.
+
+In a problem about lists, you have to remember that the car and
+the cdr of a pair do NOT play symmetrical roles in the representation
+of a list.  Each car is an element; each cdr is a sublist.  In a
+list of numbers, each car is a number; no cdr is a number.  Therefore,
+any solution that interchanges cars and cdrs or tries to mutate a
+car of something just can't be right:
+   (set-car! (car x) ...)
+   (set-cdr! (car x) ...)
+   (set-cdr! x (car y))
+   (set-car! x (cdr y))
+For solutions of this sort we subtracted three points from what
+the score would otherwise be.
+
+Grading:
+7  correct
+6  base case error
+5  no return value, but it only matters to the ultimate caller
+4  no return value, and so the recursion doesn't work
+4  rearranges pairs with set-cdr! but incorrectly
+3
+2  uses set-car! to rearrange pairs.  (Some set-car! solutions are correct.)
+1
+0  allocates pairs (calls CONS, LIST, APPEND, etc.)
+0  uses set! to rearrange pairs.  (Some uses of set! are okay, but they
+                                    never actually help the solution.)
+
+Then subtract 3 points for the cases mentioned in the previous paragraph.
+
+
+5.  Vectors.
+
+There are many ways to do this, but they all share two essential points:
+First, there must be a helper procedure that recursively moves through the
+vector, changing one element at a time; second, there must be some way to
+remember one element (generally the original last element) of the vector,
+either through a LET or through an extra argument to the helper.
+
+Here's a straightforward solution:
+
+(define (rotate! v)
+
+  (define (help i)
+    (if (= i 0)
+	'this-value-doesnt-matter
+	(begin (vector-set! v i (vector-ref v (- i 1)))
+	       (help (- i 1)))))
+
+  (let ((temp (vector-ref v (- (vector-length v) 1))))
+    (help (- (vector-length v) 1))
+    (vector-set! v 0 temp)
+    v))
+
+The last line (with just the V) is there so that ROTATE! returns the vector,
+since the return value from VECTOR-SET! is unspecified.
+
+The elements of a vector of N elements are numbered from 0 to N-1, not from
+1 to N.  That's why the expression (- (VECTOR-LENGTH V) 1) is used to find
+the index of the rightmost element.
+
+It's very important that this program starts at the right end and works
+down to the left end, so that if we are given (A B C D) to rotate, the
+intermediate results are
+	(a b c d)
+	(a b c c)
+	(a b b c)
+	(a a b c)
+	(d a b c)
+If we started at the left end instead, we'd get
+	(a b c d)
+	(a a c d)
+	(a a a d)
+	(a a a a)  ; maybe stop here, or
+	(d a a a)  ; maybe something like this.
+There are other ways to organize the program so that left-to-right operation
+does produce the desired result.  Here's one that works from left to right,
+always swapping the chosen element with the last element:
+
+(define (rotate! v)
+
+  (define (swap v i j)
+    (let ((temp (vector-ref v i)))
+      (vector-set! v i (vector-ref v j))
+      (vector-set! v j temp)))
+
+  (define (help i)
+    (if (< i (vector-length v))
+	(begin (swap v i (- (vector-length v) 1))
+	       (help (+ i 1)))))
+
+  (help 0)
+  v)
+
+When we ran across this solution in the grading, it took us some time to
+convince ourselves that it really works.  Here's a trace of intermediate
+results:
+	(a b c d)
+	(d b c a)
+	(d a c b)
+	(d a b c)
+	(d a b c)
+
+The problem told you to mutate the given vector, not create a new one.
+That rules out any call to MAKE-VECTOR, either directly or through a
+helper procedure such as VECTOR-COPY; it also rules out things like
+	(list->vector (list-rotate (vector->list v)))
+
+A few students recognized that they should use a LET to save something,
+but instead of saving one element, tried to save the entire vector with
+something along the lines of
+	(let ((new-v v)) ...)
+If this did what they intended, it would be ruled out by the problem
+statement, but in fact it does *not* make a copy of the vector.  It just
+makes a new variable that's bound to the same (as in EQ?, not EQUAL?)
+vector as the original variable V.
+
+
+Scoring:
+
+7  correct.
+
+6  indexing off by one (1 to N instead of 0 to N-1).
+   vector rotated, but not returned.
+
+4  one element lost (no LET or equivalent).
+   new vector allocated, but no VECTOR->LIST or LIST->VECTOR.
+   no base case in recursive helper.
+   one value propagated by shifting left-to-right.
+
+2  LIST->VECTOR etc.
+   no recursion (just two values swapped).
+   other messed up reorderings (such as reversal).
+
+0  Total misunderstanding of vectors, such as (CAR V).
+
+We did not assign scores 1, 3, or 5.
+
+
+6.  Concurrency.
+
+(a)  The only possible value is 10.  If the first process runs first,
+it sets BAZ to 5, and then the second process sets it back to 10.  If the
+second process runs first, it sets BAZ to 20, and then the first process
+sets it back to 10.
+
+(b)	5: P1 computes baz/2 = 5, then P2 runs completely, then P1 stores 5.
+	10: either correct sequential order
+	15: P2 loads BAZ once from memory (getting 10), then P1 runs
+		completely (setting BAZ to 5), then P2 loads BAZ again
+		(getting 5), adds 10+5, stores 15.
+	20: P2 computes baz+baz = 20, then P1 runs completely, then
+		P2 stores 20.
+
+
+Scoring:
+
+3  correct
+2  (a) correct, (b) missing one value and no wrong ones added
+1  (a) correct or (b) correct
+0  neither correct
+
+
+7.  Streams.
+
+(define stream-car car)       ; unchanged from the stream-only version
+
+(define (stream-cdr sl)
+  (if (procedure? (cdr sl))   ; or PROMISE?
+      (force (cdr sl))
+      (cdr sl) ))
+
+;;;;;;;; or
+
+(define (stream-cdr sl)
+  (if (or (pair? (cdr sl)) (null? (cdr l)))
+      (cdr sl)
+      (force (cdr sl)) ))
+
+Scoring: 1 point for stream-car, 3 for stream-cdr.  Part credit in the latter
+for any attempt that shows understanding of the need to distinguish the two
+cases, especially if it's clear that what needs to be distinguished is the
+nature of the cdr rather than of the entire argument.
+
+Comment: Many of you seem to be upset because you never heard of the
+predicate PROCEDURE? and therefore couldn't figure out how to do the
+test.  I'm unsympathetic to this problem, for several reasons:
+
+        1.  You came across PROCEDURE? in the adventure game project,
+        where it is used in the version of PERSON? that you rewrote.
+
+        2.  You own a copy of the Scheme reference manual, which has
+        a perfectly good index.
+
+        3.  If you couldn't think of PROCEDURE? you could have used
+        PAIR? or ATOM? or LIST? to distinguish the two cases.

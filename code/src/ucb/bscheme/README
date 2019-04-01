@@ -1,0 +1,14 @@
+Original files from https://wla.berkeley.edu/~scheme/source/src/ucb/bscheme/.
+
+Makefile.in	- Makefile template needed for creating the Makefile
+berkeley.scm	- Contains base functions required for lower division classes
+explorin.scm	- Definitions from Harvey&Wright
+load-explorin.in	- Template for creating load-explorin
+load-grfx.in	- Template for creating load-grfx
+load-simply.in	- Template for creating load-simply
+modeler.stk	- replacement modeler for cs 3
+obj.scm		- Object orienting functions
+simply.scm	- Definitions from Oliver&Grillmeyer
+turtle-grfx.scm	- Tutrtle graphics for stk via tk toolkit
+userinit.stk	- Not sure what this is for either
+which-modeler.scm	- Appears to be a kludge that was never cleaned up

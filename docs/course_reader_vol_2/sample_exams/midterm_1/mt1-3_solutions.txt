@@ -1,0 +1,463 @@
+CS 61A          Solutions to sample midterm 1 #3
+
+1.  What will Scheme print?
+
+> (first '(help!))
+HELP!
+
+	[The first of a *sentence* containing one word is that word.
+	If you had parentheses in your answer, that's wrong -- it
+	would then be a sentence, not a word.  The obvious wrong
+	answer is H, which would be correct for (first 'help!).
+	A more unusual wrong answer was "(" -- thinking, I guess,
+	that the parentheses are just characters in a word, the same
+	as the exclamation point.  But the parentheses that delimit
+	a sentence are not *part of* that sentence.]
+
+
+> ((word 'but 'first) 'plop)
+ERROR
+
+	[This is the one most people got wrong.  Of course it's
+	equivalent to ('butfirst 'plop), but that's *not* the same
+	as (butfirst 'plop)!  Think about the following example:
+		> (define x 7)
+		> (+ x 5)
+		> (+ 'x 5)
+	The second expression has the value 12.  What about the third
+	expression?  It's an error; you can't add the word "x" to a
+	number.  The word "x" is not the same as the thing whose name
+	is "x".  Similarly, the word "butfirst" is not the same as the
+	thing whose name is "butfirst".]
+
+
+> (let ((+ -)
+        (- +))
+    (- 8 2))
+10
+
+	[Names of primitives are just ordinary variables that happen
+	to have a predefined value, but that can be overridden by a
+	local binding.  Notice that that isn't true about names of
+	special forms; you can't say (LET ((DEFINE +)) ...) etc.
+	Since all the bindings in a LET are done at once, not in
+	sequence, the local value for the name "-" is the *original*
+	meaning of +, not the local meaning.]
+
+
+> (list (append '(a b) '()) (cons '(a b) '(c)))
+
+((A B) ((A B) C))
+
+----->XX---------------------------X/
+      |                            |
+      V                            V
+      XX--->X/                     XX------------>X/
+      |     |                      |              |
+      V     V                      V              V
+      a     b                      XX---->X/      c
+                                   |      |
+                                   V      V
+                                   a      b
+
+        The entire expression is a call to LIST with two arguments, so it
+        creates a list with two elements (the topmost two pairs of the
+        picture are its spine).  The first element, made by a call to
+        APPEND, is a list of the elements of the arguments to APPEND.  (The
+	empty list argument contributes no elements to that result.)  The
+        second element is made by CONS, which sticks one new element,
+        namely (A B), at the front of the one-element list (C), producing
+        a two-element list.
+
+
+> (filter (lambda (x) (if (list? x) (pair? x) (number? x)))
+          '(1 () (2 3) (so) what))
+(1 (2 3) (so))
+
+--->XX--->XX-------->X/
+    |     |          |
+    V     V          V
+    1     XX--->X/   X/
+          |     |    |
+          V     V    V
+          2     3    so
+
+        This was an exercise in understanding FILTER, IF, and predicates.
+        The IF subexpression returns true for a list that's also a pair
+        (i.e., not the empty list) or for a non-list that's a number (not
+        a non-numeric word, for example).  So these tests are made:
+
+                element   first test    result  second test     result
+
+                1         LIST?         #F      NUMBER?         #T
+                ()        list?         #t      pair?           #f
+                (2 3)     LIST?         #T      PAIR?           #T
+                (SO)      LIST?         #T      PAIR?           #T
+                what      list?         #f      number?         #f
+
+        The lines in capital letters show the elements that FILTER keeps.
+        To solve this problem correctly you also had to understand that
+        there is no recursion here, so this is not a deep-list problem: the
+        elements of the elements are not tests (which would have rejected
+        the word SO).
+
+
+> (cddadr '((a b c d e) (f g h i j) (l m n o p) (q r s t u)))
+(H I J)
+
+
+           +---+---+   +---+---+   +---+---+
+           |   |   |   |   |   |   |   |  /|
+---------> | | | ----->| | | ----->| | | / |
+           | | |   |   | | |   |   | | |/  |
+           +-|-+---+   +-|-+---+   +-|-+---+
+             |           |           |
+             |           |           |
+             V           V           V
+
+             H           I           J
+
+	(cdr '((a b c d e) (f g h i j) (l m n o p) (q r s t u)))
+	===> ((f g h i j) (l m n o p) (q r s t u)))
+
+	(car '((f g h i j) (l m n o p) (q r s t u))) ===> (f g h i j)
+
+	(cdr '(f g h i j)) ===> (g h i j)
+
+	(cdr '(g h i j)) ===> (h i j)
+
+	Mainly this was about remembering that CDDADR means "the CDR of the
+	CDR of the CAR of the CDR," not "first call CDR then call CDR then
+	call CAR then call CDR."
+
+
+
+2.  Order of growth
+
+The number of steps required to compute (* (f n) (g n)) is the number to
+compute (f n), plus the number to compute (g n), plus one more for the
+multiplication.  So this is Theta(n + n^2 + 1), but since the n^2 term
+dominates the others, it's also both Theta(n + n^2) and Theta(n^2).  So
+B and C should be checked.
+
+One common wrong answer was to check B but not C.  This is a pretty good
+answer; it does indicate the correct order of growth.  But it's not perfect
+because it doesn't display understanding of the fact that any quadratic
+function is of the same order -- if Theta(5n^2) had been one of the choices,
+it should have been checked also.
+
+Checking D -- Theta(n^3) -- probably comes from multiplying the two orders of
+growth of the argument expressions, because the overall expression multiplies
+those arguments.  But the *amount of time* to compute the product is not the
+product of the times!
+
+Scoring: Minus one point per error (either checking A or D, or failing to
+check B or C).
+
+
+3. Iterative/recursive processes.
+
+(a) recursive process
+
+(define (lg n)
+  (if (= n 1)
+      0
+      (+ (lg (floor (/ n 2))) 1)))
+
+Please notice that this is *exactly* what the problem statement told you
+to write.  It told you that lg(1) is 0.  And for other values, it told
+you that lg(n) = lg(floor(n/2))+1.  Many people asked during the exam
+"what does floor mean," but *you don't have to know* what floor means!
+If you just follow instructions, and take lg(floor(n/2))+1, your
+program will be correct.  (But you should know anyway: floor(x) is the
+largest integer less than or equal to x.)
+
+(b) iterative process
+
+Here's what we wanted:
+
+(define (lg n)
+  (define (helper n result)
+    (if (= n 1)
+	result
+	(helper (floor (/ n 2)) (+ result 1))))
+  (helper n 0))
+
+Again, we asked you to use the algorithm described in the problem statement,
+not invent some other algorithm.
+
+Scoring:  Each half was worth two points, assigned as follows:
+
+	2:  correct AND has the desired structure
+	1:  correct OR has the desired structure
+	0:  neither
+
+"Correct" means that your program gives the right answer and generates
+a recursive or iterative process, as appropriate.  "Has the desired
+structure" means that you implemented (perhaps wrongly) the algorithm
+you were told to implement.
+
+There weren't any interesting wrong answers to part (a).  For part (b),
+several people tried to write the following iterative program, which
+uses a different algorithm from the one we told you:
+
+(define (lg n)			;; NOT TO SPEC
+  (define (helper product count)
+    (if (> product n)
+	(- count 1)
+	(helper (* product 2) (+ count 1))))
+  (helper 1 0))
+
+We would give this one point, although in fact everyone who tried it got it
+wrong because they didn't work out the need to go one extra iteration to
+handle both exact powers of 2 and numbers that aren't powers of 2.
+
+The most common one-point answer for part (b) was to write the helper
+procedure but not write a wrapper procedure that invokes it.  Some
+people called their helper procedure LG and wrote little comments about
+what values they wanted the user to give for the extra arguments, but
+that's not following the spec -- LG takes one argument.
+
+A fairly common one-point mistake was to get the iterative program right
+except for the base case, returning 0 instead of RESULT.  Common in both
+(a) and (b) was to leave out FLOOR altogether, for one point.
+
+The most common zero-point solution for (b) was to call LG inside the
+call to helper, something like this:
+
+        (helper (lg (floor (/ n 2))) (+ result 1))
+
+The resulting process is not only recursive but also Theta(N^2).
+
+A less common zero-point solution was an iterative solution that takes
+N iterative steps instead of lg(N) iterative steps, thereby getting the
+wrong answer.
+
+A general comment about grading programming questions:  We ignored missing
+or extra close parentheses, but did pay attention to missing or extra
+open parentheses, since they might indicate that you didn't know whether
+or not to invoke a procedure.
+
+
+4.  Normal vs. applicative order
+
+For primitive procedures, even in normal order the arguments are evaluated
+before the primitive is called.  So the difference between normal and
+applicative order affects only the invocations of defined procedures.
+Since * and RANDOM are primitives, only C and D are in the running.
+
+In expression C, applicative order computes (random 10) once and uses
+the value as the argument to square, so we end up computing something
+like (* 6 6) if that's the random number we got.  But normal order
+uses the expression (random 10) itself as the argument, so we end up
+computing (* (random 10) (random 10)), which gets two different
+random numbers.
+
+In expression D, since RANDOM is a primitive, its argument must be
+evaluated before it's invoked regardless of whether the interpreter
+uses normal or applicative order.  In either case we get a random
+number between 0 and 99.
+
+Many people were confused, and checked all the boxes, because all of these
+expressions can produce different answers each time they're evaluated.  But
+we asked for differences that depend on whether applicative or normal order
+is used, and that's the case only for C, which will always return a perfect
+square (although a different one each time) under applicative order, but can
+return non-squares under normal order.
+
+Scoring: 2 points for C alone, no points for any other answer.
+
+
+5.  Recursive procedures.
+
+The most straightforward solution was to use a helper procedure:
+
+(define (mad-libs story)
+  (lambda (nouns adjectives)
+    (define (helper story nouns adjs)
+      (cond ((empty? story) '())
+	    ((equal? (first story) '*NOUN)
+	     (se (first nouns) (help (bf story) (bf nouns) adjs)))
+	    ((equal? (first story) '*ADJECTIVE)
+	     (se (first adjs) (help (bf story) nouns (bf adjs))))
+	    (else (se (first story) (help (bf story) nouns adjs)))))
+    (helper story nouns adjectives)))
+
+Having a named helper with all three sentences as its arguments allows
+walking down the three sentences with simple recursive calls.  Without
+the helper it's a little trickier:
+
+(define (mad-libs story)
+  (lambda (nouns adjectives)
+    (cond ((empty? story) '())
+	  ((equal? (first story) '*NOUN)
+	   (se (first nouns) ((mad-libs (bf story)) (bf nouns) adjs)))
+	  ((equal? (first story) '*ADJECTIVE)
+	   (se (first adjs) ((mad-libs (bf story)) nouns (bf adjs))))
+	  (else (se (first story) ((mad-libs (bf story)) nouns adjs))))))
+
+Note the double open parentheses at the points where MAD-LIBS is called
+recursively.  We're trying to build up a sentence with an expression like
+	(se <first-word> <rest-of-story>)
+but the call to MAD-LIBS doesn't return a sentence (the rest of the story);
+it returns a procedure, and we have to call that procedure to get the rest
+of the story.  One of the most common mistakes was
+	(se (first ___) (mad-libs (bf story)))	;; wrong!
+which would try to use a procedure -- the one mad-libs returns -- as part
+of a sentence!  These solutions got at most 4 points.
+
+Many people invented unnecessary selectors and constructors for data types
+that weren't part of the specification, things like FIRST-NOUN and
+FIRST-ADJECTIVE.  You were told that NOUNS and ADJECTIVES are sentences, so
+there's no reason you shouldn't use the ordinary sentence selectors and
+constructors for them.  Presumably these people were bending over backward
+because of fear of losing points for data abstraction violations.  We didn't
+take off points for this if the resulting program was readable.
+
+Scoring:
+
+There were two big ideas here:
+
+  * DOMAIN AND RANGE:  Mad-libs is a procedure that takes one argument,
+    a sentence.  It returns a procedure that takes two sentences as
+    arguments, returning a sentence.  Mostly this means that the first
+    two lines
+	(define (mad-libs story)
+	  (lambda (nouns adjectives)
+    had to be correct.
+
+  * SENTENCE PROCESSING:  The program had to walk down three sentences,
+    going to the next word of STORY for each recursive call but taking
+    the next noun or adjective only sometimes.
+
+8  correct.
+7  trivial errors (such as missing or extra quotation marks!)
+6  both big ideas understood, but significant errors, or data abstraction
+   violations (CAR or CDR of a sentence), or *really* hideous code.
+4  either correct processing but errors about domain and range, or
+   domain and range correct but processing problems (such as taking the
+   butfirst of all three sentences each time).
+2  domain and range correct but processing totally incoherent or missing.
+0  even worse.
+
+Note that we did not assign scores of 5, 3, or 1 except in rare cases when
+we couldn't decide between two grades.
+
+
+6.  Higher order procedures.
+
+The key idea here is that word-maker returns a procedure.  So it has to
+have a lambda in it:
+
+(define (word-maker template)
+  (lambda (wd)
+    (scrunch (every (lambda (syllable)
+		      (if (equal? syllable '*) wd syllable))
+		    template))))
+
+Word-maker takes a sentence (TEMPLATE) as argument and returns a procedure.
+That procedure takes a word (WD) as argument and returns a word (created by
+calling SCRUNCH).  Having the correct domain and range both for word-maker
+and for the procedure it creates was a minimal requirement for 4 points
+("has the idea").
+
+Part of the intent of the problem was to test your ability to use higher-order
+functions (EVERY in this case), so an otherwise correct solution using
+recursion instead of EVERY got 4 points.
+
+A typical 7-point solution was to leave out the quotation mark before the
+asterisk.
+
+A typical 6-point solution used KEEP instead of EVERY.
+
+A typical 4-point solution was correct but recursive.
+
+A typical 2-point solution was
+	(define (word-maker template)
+	  (scrunch (lambda ...)))
+
+A typical 0-point solution worked only for templates just like the examples:
+	(define (word-maker template)
+	  (lambda (wd)
+	    (cond ((and (equal? (first template) '*)
+			(= (count template) 2)
+			(not (equal? (last template) '*)))
+		   ...)
+		  ...)))
+This is an important general rule for exams.  The examples are not meant to
+be exhaustive!  Your programs should work for the full domain specified in
+the question -- in this case, any sentence as the template.
+
+
+7.  Using data abstraction.
+
+(a) assoc
+
+(define (assoc key a-list)
+  (cond ((NULL? a-list) #f)
+	((equal? key (ASSOCIATION-KEY (CAR a-list))) (CAR a-list))
+	(else (assoc key (CDR a-list)))))
+
+(b) index and index-one
+
+(define (index groups)
+  (if (NULL? groups)
+      '()
+      (append (index-one (CAR groups)) (index (CDR groups)))))
+
+(define (index-one group)
+  (define (help groupname people)
+    (if (EMPTY? people)
+	'()
+	(CONS (MAKE-ASSOCIATION (FIRST people) groupname)
+	      (help groupname (BF people)))))
+  (help (ASSOCIATION-KEY group) (ASSOCIATION-VALUE group)))
+
+There are 15 procedure calls in capital letters above.  These are the
+candidates for changes to respect data abstraction: the selectors, the
+constructors, and the empty tests.
+
+As the exam said (in boldface!), an association *list* is not an
+association, but merely a sequence.  Therefore, the procedures that
+manipulate the variable a-list are unchanged; they remain CAR, CDR,
+CONS, and NULL? in the solution.
+
+On the other hand, the values of (car a-list) and group are associations,
+and so we use the selectors ASSOCIATION-KEY and ASSOCIATION-VALUE to
+examine their components.  Also, in index-one, we are constructing
+an association list by CONSing a new association, made with the constructor
+MAKE-ASSOCIATION, onto the result of a recursive call to help.
+
+Finally, in this particular association list, the value part of each
+association is a *sentence* of names of people, and so we use FIRST, BF
+(or BUTFIRST), and EMPTY? to examine the value of the variable people.
+
+Scoring:  We first scored this question on a scale of 15 "little points,"
+giving one point for each of the 15 capital-letter names in the above
+solution that you had correct.  We then subtracted two little points for
+any other change you made to the given code, except that you lost at most
+three little points for correctly using a new abstract data type that you
+invented.  (For example, several people invented one for sequences of
+associations.)  We then converted to a 0-5 scale as follows:
+
+	5   14-15
+	4   11-13
+	3   8-10
+	2   5-7
+	1   2-4
+	0   0-1
+
+The most common unnecessary change, other than inventing a new ADT, was
+the following modification to assoc:
+
+(define (assoc key a-list)	;; wrong
+  (cond ((null? a-list) #f)
+	((equal? key (association-key (car a-list)))
+	 (MAKE-ASSOCIATION (ASSOCIATION-KEY (CAR A-LIST))
+			   (ASSOCIATION-VALUE (CAR A-LIST))))
+	(else (assoc key (cdr a-list)))))
+
+Respecting a data abstraction doesn't mean you have to reconstruct a
+perfectly good association!  Perhaps people thought that the word
+"association" had to appear somewhere in order to respect the
+abstraction, but it doesn't.
